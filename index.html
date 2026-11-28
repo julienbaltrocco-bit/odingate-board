@@ -1,0 +1,1442 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Trading Board · Vorwärtstest</title>
+<style>
+  :root { --bg: #F3EFE6; --panel: #FBF9F4; --panel2: #ECE6D8; --fg: #1B1A17; --muted: #5E5A52; --line: #D8D2C4; --accent: #1E6B45;
+    --ok: #1E6B45; --bad: #B8431F; --warn: #7A5C0A; --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --serif: "Newsreader", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; color-scheme: light; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 14.5px; line-height: 1.45;
+    padding: max(12px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) 48px max(14px, env(safe-area-inset-left, 0px)); }
+  .seite { max-width: 1180px; margin: 0 auto; display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+  .leiste { display: flex; flex-wrap: wrap; gap: 4px 16px; font-family: var(--mono); font-size: 12px; color: var(--muted); align-items: center; }
+  .leiste b { color: var(--fg); font-weight: 500; }
+  .punkt { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); margin-right: 6px; }
+  .punkt.an { background: var(--ok); animation: puls 1.6s ease-in-out infinite; } .punkt.aus { background: var(--bad); }
+  @keyframes puls { 50% { opacity: .3; } }
+  .kopf { display: grid; gap: 2px; }
+  .kopf h1 { font-size: 13px; font-weight: 500; color: var(--muted); margin: 0; letter-spacing: .02em; }
+  .gross { font-family: var(--mono); font-size: clamp(34px, 9.5vw, 54px); font-weight: 500; letter-spacing: -0.02em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .unter { font-family: var(--mono); font-size: 14.5px; font-variant-numeric: tabular-nums; }
+  .gut { color: var(--ok); } .schlecht { color: var(--bad); } .ruhig { color: var(--muted); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 8px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 10px 11px; display: grid; gap: 1px; min-width: 0; }
+  .stat .n { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stat .w { font-family: var(--mono); font-size: 16px; font-variant-numeric: tabular-nums; }
+  .stat .z { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+  h2 { font-size: 13px; font-weight: 600; margin: 4px 0 0; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+  .kasten { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .chartbox { height: 220px; }
+  .paar { border-bottom: 1px solid var(--line); }
+  .paar:last-child { border-bottom: 0; }
+  .paar > button { all: unset; box-sizing: border-box; cursor: pointer; width: 100%; display: grid; align-items: center; gap: 2px 10px; padding: 11px 12px;
+    grid-template-columns: 62px 58px minmax(0, 1fr) minmax(0, 1fr) 18px; }
+  .paar > button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .paar .coin { font-weight: 600; font-size: 15px; }
+  .marke { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; border: 1px solid var(--line); text-align: center; }
+  .marke.long { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 50%, transparent); }
+  .marke.short { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 50%, transparent); }
+  .paar .preis, .paar .pnl { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; display: grid; }
+  .paar .preis small, .paar .pnl small { font-size: 11px; color: var(--muted); }
+  .paar .pnl small.gut { color: var(--ok); } .paar .pnl small.schlecht { color: var(--bad); }
+  .pfeil { color: var(--muted); transition: transform .15s; text-align: center; }
+  .paar.offen .pfeil { transform: rotate(90deg); }
+  .detail { display: none; padding: 0 12px 12px; gap: 10px; }
+  .paar.offen .detail { display: grid; }
+  .detail .werte { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 6px 14px; font-size: 12.5px; }
+  .detail .werte div { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dashed var(--line); padding-bottom: 3px; }
+  .detail .werte span:first-child { color: var(--muted); } .detail .werte span:last-child { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .raster { display: flex; gap: 6px; flex-wrap: wrap; }
+  .raster button { all: unset; cursor: pointer; font-family: var(--mono); font-size: 12px; padding: 4px 10px; border-radius: 7px; border: 1px solid var(--line); color: var(--muted); }
+  .raster button[aria-pressed="true"] { color: var(--fg); background: var(--panel2); border-color: var(--accent); }
+  .raster button:focus-visible { outline: 2px solid var(--accent); }
+  .kerzen { height: 300px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--bg); }
+  .hinweis { font-size: 12px; color: var(--muted); margin: 0; }
+  .rolle { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  th { text-align: left; font-weight: 500; font-size: 11.5px; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 7px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  .r { text-align: right; } td.r { font-family: var(--mono); }
+  .auf { animation: auf .8s ease-out; } .ab { animation: ab .8s ease-out; }
+  @keyframes auf { from { background: color-mix(in srgb, var(--ok) 32%, transparent); } to { background: transparent; } }
+  @keyframes ab { from { background: color-mix(in srgb, var(--bad) 32%, transparent); } to { background: transparent; } }
+  @media (prefers-reduced-motion: reduce) { .auf, .ab, .punkt.an { animation: none; } }
+  .tor { position: fixed; inset: 0; background: var(--bg); display: grid; place-items: center; padding: 24px; z-index: 50; }
+  .tor form { width: min(340px, 100%); display: grid; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 22px; }
+  .tor h2 { margin: 0; font-size: 15px; color: var(--fg); text-transform: none; letter-spacing: 0; }
+  .tor label { font-size: 12.5px; color: var(--muted); }
+  .tor input { font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); width: 100%; }
+  .tor input:focus-visible, .tor button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .tor button { font: inherit; font-weight: 600; padding: 10px 12px; border-radius: 8px; border: 0; background: var(--accent); color: #F3EFE6; cursor: pointer; }
+  .tor .fehler { color: var(--bad); font-size: 12.5px; min-height: 1.2em; margin: 0; }
+  .abmelden { all: unset; cursor: pointer; text-decoration: underline; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tabs button { all: unset; box-sizing: border-box; cursor: pointer; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 2px; min-width: 0; }
+  .tabs button[aria-pressed="true"] { border-color: var(--accent); background: var(--panel2); }
+  .tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .tabs .t { font-weight: 600; font-size: 13.5px; } .tabs .s { font-size: 11.5px; color: var(--muted); }
+  .tabs .w { font-family: var(--mono); font-size: 15px; font-variant-numeric: tabular-nums; }
+  .regelzeile { font-size: 12.5px; color: var(--muted); margin: 2px 0 0; }
+  .teil { display: contents; }
+  .tabs button[data-s] .t { font-size: 13px; }
+  .marke.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, transparent); }
+  .leer { padding: 16px 12px; color: var(--muted); font-size: 12.5px; }
+  @media (min-width: 760px) { .paar > button { grid-template-columns: 80px 70px minmax(0, 1fr) minmax(0, 1fr) 20px; padding: 12px 16px; } .kerzen { height: 380px; } .chartbox { height: 260px; } }
+  /* Look "Grüne Glasur": nur Darstellung, keine Logik */
+  .gross { font-family: var(--serif); font-weight: 400; letter-spacing: -0.01em; font-variant-numeric: lining-nums tabular-nums; }
+  .kopf h1 { font-family: var(--mono); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+  h2 { font-size: 15px; text-transform: none; letter-spacing: 0; color: var(--fg); }
+  .stats { gap: 0 16px; border-top: 1px solid var(--fg); }
+  .stat { background: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 10px 0; }
+  .stat .w { font-family: var(--serif); font-size: 20px; font-variant-numeric: lining-nums tabular-nums; }
+  .kasten { border-radius: 4px; }
+  .kerzen { background: var(--panel); border-radius: 4px; }
+  .tabs button { background: none; border-radius: 4px; }
+  .tabs button[aria-pressed="true"] { border-color: var(--fg); background: var(--panel); }
+  .tabs .w { font-family: var(--serif); font-size: 19px; font-variant-numeric: lining-nums tabular-nums; }
+  .raster button { border-radius: 999px; }
+  .raster button[aria-pressed="true"] { border-color: var(--fg); background: var(--fg); color: var(--bg); }
+  .tor form { border-radius: 4px; }
+  .tor h2 { font-family: var(--serif); font-weight: 500; font-size: 22px; }
+  .tor button { border-radius: 999px; }
+  .tor input { background: var(--panel); border-color: var(--fg); }
+  /* Agenten-Stadt und Positions-Replay (nur Darstellung) */
+  .stadt { position: fixed; inset: 0; z-index: 40; background: var(--bg); overflow: auto; padding: max(16px, env(safe-area-inset-top, 0px)) 20px 48px; }
+  .stadt-innen { max-width: 760px; margin: 0 auto; display: grid; gap: 14px; }
+  .stadt-oben { font-family: var(--mono); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 0; }
+  .stadt-titel { font-family: var(--serif); font-weight: 500; font-size: clamp(30px, 7vw, 44px); line-height: 1.05; margin: 0; letter-spacing: -.01em; color: var(--fg); }
+  #stadt-bild { width: 100%; height: auto; aspect-ratio: 640 / 500; cursor: pointer; display: block; }
+  .stadt-liste { display: grid; border-top: 1px solid var(--fg); }
+  .stadt-liste button { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 16px; align-items: center; min-height: 58px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .stadt-liste button:focus-visible, .zurstadt:focus-visible, .replay-knoepfe button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .stadt-liste .t { font-weight: 600; font-size: 15.5px; } .stadt-liste .s { grid-column: 1; font-size: 12.5px; color: var(--muted); }
+  .stadt-liste .w { grid-column: 2; grid-row: 1 / span 2; font-family: var(--serif); font-size: 25px; font-variant-numeric: lining-nums tabular-nums; }
+  .zurstadt { all: unset; cursor: pointer; text-decoration: underline; color: var(--fg); }
+  .replay { display: grid; gap: 10px; border-top: 1px solid var(--fg); padding-top: 12px; margin-top: 4px; }
+  .replay-knoepfe { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; scroll-margin-top: 8px; }
+  .replay-knoepfe button { all: unset; box-sizing: border-box; cursor: pointer; min-height: 46px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line); font-family: var(--mono); font-size: 13px; display: inline-flex; align-items: center; }
+  .replay-knoepfe button.haupt { background: var(--accent); border-color: var(--accent); color: var(--bg); font-family: var(--body); font-weight: 600; font-size: 15px; padding: 0 20px; }
+  .replay-knoepfe button[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+  .replay-buehne { position: relative; height: clamp(380px, 68vh, 640px); background: var(--panel); border: 1px solid var(--fg); border-radius: 4px; overflow: hidden; }
+  .replay-buehne > div { position: absolute; inset: 0; } .replay-buehne > canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .replay-status { font-family: var(--mono); font-size: 12.5px; margin: 0; display: flex; gap: 8px; align-items: center; }
+  .replay-status::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--c, var(--muted)); flex-shrink: 0; }
+  .fokus-nav { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-family: var(--mono); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+  .fokus-nav .zurstadt { min-height: 44px; display: inline-flex; align-items: center; color: var(--muted); } .fokus-hier { color: var(--fg); } .fokus-alle { margin-left: auto; }
+  .fokus-kopf { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px 24px; border-top: 1px solid var(--fg); padding-top: 12px; }
+  .fokus-links { display: grid; gap: 4px; } .fokus-rechts { display: grid; gap: 2px; font-family: var(--mono); font-size: 12.5px; }
+  .fokus-gross { font-family: var(--serif); font-size: clamp(46px, 13vw, 68px); line-height: 1; letter-spacing: -.01em; font-variant-numeric: lining-nums tabular-nums; }
+  .fokus-verlauf { height: 190px; background: var(--panel); border: 1px solid var(--line); }
+  .fokus-wahl { display: grid; gap: 8px; }
+  .fokus-wahl label { font-family: var(--mono); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+  .fokus-wahl select { width: 100%; min-height: 50px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--fg); background: var(--panel); color: var(--fg); font: inherit; font-size: 16px; font-weight: 500; }
+  .fokus-wahl select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #ansicht-fokus h2 { margin: 0; } #ansicht-fokus .replay { border-top: 0; padding-top: 0; margin-top: 0; }
+  @media (max-width: 620px) { #ansicht-fokus .replay-buehne { margin: 0 -20px; border-left: 0; border-right: 0; border-radius: 0; } }
+</style>
+</head>
+<body>
+<div class="tor" id="tor">
+  <form id="torform" autocomplete="off">
+    <h2>Trading Board · Vorwärtstest</h2>
+    <label for="pw">Passwort</label>
+    <input id="pw" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+    <button type="submit" id="torknopf">Öffnen</button>
+    <p class="fehler" id="torfehler" role="alert"></p>
+  </form>
+</div>
+<div class="seite" id="seite" hidden>
+  <div class="leiste" role="status">
+    <span><span class="punkt" id="punkt"></span><span id="status">Verbinde mit der Börse …</span></span>
+    <span>UTC <b id="uhr">–</b></span>
+    <span><span id="standname">Bot-Stand</span> <b id="botalter">–</b></span>
+    <span id="l-naechste">Nächste Signalprüfung in <b id="naechste">–</b></span>
+    <button class="abmelden" id="abmelden" type="button">Sperren</button>
+  </div>
+
+  <div class="stadt" id="ansicht-stadt" hidden>
+    <div class="stadt-innen">
+      <p class="stadt-oben">Trading Board · Vorwärtstest</p>
+      <h1 class="stadt-titel">Agenten-Stadt</h1>
+      <p class="hinweis">Jedes Gebäude ist ein Test. Je höher das Ergebnis, desto höher das Haus. Jedes farbige Band ist eine offene Position: grün im Plus, rot im Minus. Antippen öffnet den Test.</p>
+      <canvas id="stadt-bild" role="img" aria-label="Stadt mit sieben Gebäuden, eines je Test. Die Auswahl geht auch über die Liste darunter."></canvas>
+      <div class="stadt-liste" id="stadt-liste"></div>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs" role="group" aria-label="Test auswählen">
+    <button type="button" id="tab-basis" aria-pressed="true"><span class="t">Test 1 · Nur Umkehrsignal</span><span class="s" id="tabs-basis">ohne Ziel und Stop</span><span class="w" id="tabw-basis">—</span></button>
+    <button type="button" id="tab-tpsl" aria-pressed="false"><span class="t">Test 2 · Stop 5 % und Ziel 15 %</span><span class="s" id="tabs-tpsl">getrenntes Konto</span><span class="w" id="tabw-tpsl">—</span></button>
+    <button type="button" id="tab-trail" aria-pressed="false"><span class="t">Test 3 · Nachgezogener Stop 5 %</span><span class="s" id="tabs-trail">Einstiege von Test 1</span><span class="w" id="tabw-trail">—</span></button>
+    <button type="button" id="tab-tag" aria-pressed="false"><span class="t">Test 4 · Einmal am Tag entscheiden</span><span class="s" id="tabs-tag">Einstiege von Test 1</span><span class="w" id="tabw-tag">—</span></button>
+    <button type="button" id="tab-l1" aria-pressed="false"><span class="t">Test 5 · Labor-Regel A</span><span class="s" id="tabs-l1">Hebel 3 · eigenes Konto</span><span class="w" id="tabw-l1">—</span></button>
+    <button type="button" id="tab-l2" aria-pressed="false"><span class="t">Test 6 · Labor-Regel B</span><span class="s" id="tabs-l2">Hebel 3 · eigenes Konto</span><span class="w" id="tabw-l2">—</span></button>
+    <button type="button" id="tab-l3" aria-pressed="false"><span class="t">Test 7 · Labor-Regel C</span><span class="s" id="tabs-l3">Hebel 3 · eigenes Konto</span><span class="w" id="tabw-l3">—</span></button>
+    <button type="button" id="tab-l4" aria-pressed="false"><span class="t">Test 8 · Dip-Modul</span><span class="s" id="tabs-l4">ohne Hebel · eigenes Konto</span><span class="w" id="tabw-l4">—</span></button>
+    <button type="button" id="tab-l5" aria-pressed="false"><span class="t">Test 9 · Trend und Dip</span><span class="s" id="tabs-l5">Hebel 3 · eigenes Konto</span><span class="w" id="tabw-l5">—</span></button>
+    <button type="button" id="tab-l6" aria-pressed="false"><span class="t">Test 10 · Trend und Dip ohne Ziel</span><span class="s" id="tabs-l6">Hebel 3 · eigenes Konto</span><span class="w" id="tabw-l6">—</span></button>
+  </div>
+
+  <div class="teil" id="ansicht-bot">
+  <div class="kopf">
+    <h1>PAPIER-KONTO · 14-TAGE-TREND · 10 COINS · HEBEL <span id="hebel">–</span></h1>
+    <div class="gross" id="konto">—</div>
+    <div class="unter"><span id="netto">—</span> <span class="ruhig">seit Start, nach Kosten mit Rebate</span></div>
+    <p class="regelzeile" id="regel"></p>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <h2>Konto-Verlauf seit Start (% des Startkapitals, mit Rebate)</h2>
+  <div class="kasten"><div class="chartbox" id="verlauf"></div></div>
+  <p class="hinweis" id="verlauf-hinweis" hidden>Gelber Pfeil: Bis hier aus den Aufzeichnungen von Test 1 nachgerechnet, rechts davon live.</p>
+
+  <h2>Positionen · antippen für Chart und Details</h2>
+  <p class="hinweis" id="labor-signal" hidden></p>
+  <div class="kasten" id="paare"></div>
+  <p class="hinweis" id="labor-hinweis" hidden></p>
+
+  <h2>Alle Orders</h2>
+  <div class="kasten rolle"><table>
+    <thead><tr><th>Zeit (UTC)</th><th id="th-coin">Coin</th><th>Seite</th><th>Anlass</th><th class="r">Kurs</th><th class="r">Menge</th><th class="r">Volumen</th></tr></thead>
+    <tbody id="orders"><tr><td colspan="7" class="ruhig">Lade …</td></tr></tbody>
+  </table></div>
+
+  <p class="hinweis" id="fuss">Papierhandel ohne echtes Geld. Live-Kurse und Kerzen: Binance-Futures, direkt in deinem Browser. Einstiege, Gebühren, Rebate und Funding: Papier-Bot, gerechnet am Yubit-Orderbuch, Stand wird stündlich nachgeladen und liegt verschlüsselt vor. Zwischen Binance und Yubit gibt es kleine Kursunterschiede. Keine Anlageberatung.</p>
+  </div>
+
+  <div class="teil" id="ansicht-leer" hidden>
+  <div class="kopf">
+    <h1 id="leer-titel">PAPIER-KONTO · LABOR-REGEL</h1>
+  </div>
+  <div class="kasten"><div class="leer" id="leer-text">Dieser Test ist noch nicht gestartet.</div></div>
+  </div>
+
+  <div class="teil" id="ansicht-schatten" hidden>
+  <div class="kopf">
+    <h1 id="s-titel">SCHATTENTEST</h1>
+    <div class="gross" id="s-konto">—</div>
+    <div class="unter"><span id="s-netto">—</span> <span class="ruhig">seit Start, nach Kosten mit Rebate</span></div>
+    <p class="regelzeile"><span class="marke" id="s-marke"></span> <span id="s-regel"></span></p>
+    <p class="regelzeile" id="s-pruef"></p>
+  </div>
+
+  <div class="stats" id="s-stats"></div>
+
+  <h2>Konto-Verlauf seit Start (% des Startkapitals, mit Rebate, je Tag)</h2>
+  <div class="kasten"><div class="chartbox" id="s-verlauf"></div><div class="leer" id="s-verlauf-leer" hidden>Noch keine abgeschlossenen Trades.</div></div>
+
+  <h2>Offene Positionen</h2>
+  <div class="kasten rolle"><table>
+    <thead><tr><th>Coin</th><th>Seite</th><th>Seit (UTC)</th><th class="r">Einstieg</th><th class="r">Ergebnis</th></tr></thead>
+    <tbody id="s-offen"></tbody>
+  </table></div>
+
+  <h2>Letzte Trades</h2>
+  <div class="kasten rolle"><table>
+    <thead><tr><th>Ausstieg (UTC)</th><th>Coin</th><th>Seite</th><th>Einstieg (UTC)</th><th class="r">Ergebnis</th><th class="r">in $</th></tr></thead>
+    <tbody id="s-trades"></tbody>
+  </table></div>
+
+  <p class="hinweis" id="s-hinweis-archiv">Schattentest: Papierhandel ohne echtes Geld und ohne Orders. Die Signale stammen aus den täglichen Binance-Archivdaten und liegen deshalb einen Tag zurück; der Stand wird einmal täglich aktualisiert (gegen 10:20 Uhr deutscher Zeit) und liegt verschlüsselt vor. Kosten nach festem Modell: Yubit-Gebühr, 85 % Rebate angenommen, Slippage. „Nicht validiert“ heißt: Die Regel hat die strenge Prüfung nicht bestanden und wird nur beobachtet. Keine Anlageberatung.</p>
+  <p class="hinweis" id="s-hinweis-live" hidden>Live-Papierhandel ohne echtes Geld und ohne Orders. Die Signale werden alle fünf Minuten aus Binance-Daten in Echtzeit auf dem eigenen Server gerechnet; ein Einstieg oder Ausstieg erscheint hier wenige Minuten später. Die Kosten im Kontostand folgen dem festen Modell (Yubit-Gebühr, 85 % Rebate angenommen, Slippage); zusätzlich wird bei jedem Einstieg am Yubit-Orderbuch gemessen, was er wirklich gekostet hätte. Einmal täglich wird der Live-Stand gegen die Archivdaten geprüft. Fällt der Server aus, zeigt diese Seite wieder den täglichen Stand. „Nicht validiert“ heißt: Die Regel hat die strenge Prüfung nicht bestanden und wird nur beobachtet. Keine Anlageberatung.</p>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+(() => {
+  const DATEIEN = {basis: 'stand.enc.json', tpsl: 'stand_tpsl.enc.json', trail: 'stand_trail.enc.json', tag: 'stand_tag.enc.json',
+                   l1: 'stand_l1.enc.json', l2: 'stand_l2.enc.json', l3: 'stand_l3.enc.json', l4: 'stand_l4.enc.json', l5: 'stand_l5.enc.json', l6: 'stand_l6.enc.json'};
+  const SS = {basis: null, tpsl: null, trail: null, tag: null, l1: null, l2: null, l3: null, l4: null, l5: null, l6: null};
+  let aktiv = 'basis';
+  // Labor-Tests (Test 5 bis 7): Regeln, die nach jeder abgeschlossenen Kerze je Markt ein Zielgewicht nennen. Ihr Stand trägt den Block
+  // kennzahlen[0].labor; daran erkennt die Seite sie. Fehlt die Datei noch, zeigt der Tab nur einen ruhigen Hinweis (leer = dieser Tab).
+  // Titel und Beschreibung der Regel stehen nicht in dieser Seite (sie ist ohne Passwort lesbar), sondern im verschlüsselten Stand:
+  // labor.titel, labor.text, labor.zusatz. Bis ein Stand entschlüsselt ist, tragen die Tabs nur ihre Nummer.
+  // Test 8 (Dip-Modul) nutzt denselben Weg: Sein Stand trägt zusätzlich labor.dip, labor.kopf und labor.hinweis (eigene Texte)
+  // und je Position ziel_kurs (nächstes Gewinnziel) und notstop_kurs (nur als Zahl, nicht als Linie im Chart).
+  // Test 9 (Trend mit nachgezogenem Stop und Dip-Modul in einem Konto) ebenso; sein Stand trägt labor.kombi, je Position den Stop des
+  // Trend-Teils (stop_kurs), Ziel und Not-Stop des Dip-Teils (ziel_kurs, notstop_kurs) und einen Satz zur Aufteilung (teile).
+  // Test 10 (wie Test 9, Dip-Teil ohne Gewinnziel): zusätzlich labor.nurstop; notstop_kurs ist dann der nachgezogene Stop des Dip-Teils.
+  const LABOR = {l1: 5, l2: 6, l3: 7, l4: 8, l5: 9, l6: 10};   // Tab -> Nummer des Tests
+  const labor = (st) => (st && st.kennzahlen[0].labor) || null;
+  let leer = null;
+  let verlaufHinweisAlt = null;                         // Text unter dem Konto-Verlauf, wie er im HTML steht (Tests 2 bis 4)
+  const spaeter = {};                                   // Labor-Datei fehlt: erst nach zehn Minuten wieder nachsehen
+  const KEIN_CHART = 'Kein Chart verfügbar. Für diesen Markt liefert Binance keine Kerzen.';
+  const LABOR_FUSS = 'Papierhandel ohne echtes Geld. Kurse und Kerzen: Binance-Futures, wo der Markt dort läuft, sonst der Kurs aus dem letzten Bot-Stand (Yubit). Einstiege, Gebühren, Rebate und Funding: Papier-Bot, gerechnet am Yubit-Orderbuch; der Stand liegt verschlüsselt vor und wird alle paar Minuten nachgeladen. Zwischen Binance und Yubit gibt es kleine Kursunterschiede. Keine Anlageberatung.';
+  const unlesbar = {};                                  // Labor-Datei ist da, lässt sich aber nicht lesen (anders als "noch nicht gestartet")
+  const versucht = {};                                  // für diesen Labor-Tab ist mindestens ein Abruf zu Ende gegangen
+  let fussAlt = null;                                   // Fußzeile der Tests 1 bis 4, wie sie im HTML steht
+  // Schattentests (Forschung): ein verschlüsseltes Bündel aus dem Forschungszweig, einmal täglich aktualisiert.
+  // Seit das Repository privat ist, legt der Server diese und die Live-Datei neben die Seite (vorwaertstest/stunde.sh, board_zusatz).
+  const SCHATTEN_URL = 'schattentests.enc.json';
+  // Live-Fassungen einzelner Tests vom eigenen Server (alle fünf Minuten); ersetzen die Anzeige des Schattentests, solange sie den neueren Datenstand haben
+  const LIVE_URL = 'live.enc.json';
+  let SCH = null, ARCHIVSTAND = null, LIVESTAND = null, schatten = null, sChart = null, sSerie = null;
+  const b64 = (t) => Uint8Array.from(atob(t), (c) => c.charCodeAt(0));
+  let privat = null;                  // RSA-Schlüssel, nach richtiger Passworteingabe
+
+  async function ableiten(passwort, info) {             // Passwort -> 48 Byte (AES-Schlüssel + IV)
+    const roh = await crypto.subtle.importKey('raw', new TextEncoder().encode(passwort), 'PBKDF2', false, ['deriveBits']);
+    return new Uint8Array(await crypto.subtle.deriveBits({name: 'PBKDF2', hash: 'SHA-256', salt: b64(info.salz), iterations: info.runden}, roh, 384));
+  }
+  async function oeffnen(bits) {                         // wirft bei falschem Passwort
+    const info = await (await fetch('schluessel.json', {cache: 'no-store'})).json();
+    const b = bits || null;
+    const key = await crypto.subtle.importKey('raw', b.slice(0, 32), 'AES-CBC', false, ['decrypt']);
+    const der = await crypto.subtle.decrypt({name: 'AES-CBC', iv: b.slice(32, 48)}, key, b64(info.d));
+    privat = await crypto.subtle.importKey('pkcs8', der, {name: 'RSA-OAEP', hash: 'SHA-256'}, false, ['decrypt']);
+  }
+  async function entschluesseln(paket) {
+    const k = await crypto.subtle.decrypt({name: 'RSA-OAEP'}, privat, b64(paket.k));
+    const key = await crypto.subtle.importKey('raw', k, 'AES-CBC', false, ['decrypt']);
+    return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name: 'AES-CBC', iv: b64(paket.iv)}, key, b64(paket.d))));
+  }
+  const REST = 'https://fapi.binance.com', WS = 'wss://fstream.binance.com';
+  const $ = (id) => document.getElementById(id);
+  const de = (n) => new Intl.NumberFormat('de-DE', {minimumFractionDigits: n, maximumFractionDigits: n});
+  const vz = (x, n) => (x > 0 ? '+' : x < 0 ? '−' : '') + de(n).format(Math.abs(x));
+  const kurs = (x) => x == null || !isFinite(x) ? '–' : new Intl.NumberFormat('de-DE', {maximumSignificantDigits: 7}).format(x);
+  const farbe = (x) => x > 1e-9 ? 'gut' : x < -1e-9 ? 'schlecht' : 'ruhig';
+  const zwei = (n) => String(n).padStart(2, '0');
+  const dauer = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600); return (h ? h + ':' : '') + zwei(Math.floor(s % 3600 / 60)) + ':' + zwei(s % 60); };
+  const el = (tag, klasse, text) => { const e = document.createElement(tag); if (klasse) e.className = klasse; if (text != null) e.textContent = text; return e; };
+
+  function laborText(k, lab) {                         // Regeltext eines Labor-Tests
+    const beschreibung = [lab.text, lab.zusatz].filter(Boolean).join(' ');   // beides nur aus dem verschlüsselten Stand; fehlt es, bleibt der Satz kurz
+    let zuletzt = '';
+    if (lab.kerze) {                                    // Ende der zuletzt ausgewerteten Kerze = ihr Beginn plus eine Kerzenlänge
+      const e = new Date(new Date(lab.kerze.replace(' ', 'T') + ':00Z').getTime() + lab.kerze_minuten * 60000);
+      zuletzt = ` Zuletzt ausgewertet: Kerzenschluss vom ${zwei(e.getUTCDate())}.${zwei(e.getUTCMonth() + 1)}. ${zwei(e.getUTCHours())}:${zwei(e.getUTCMinutes())} UTC.`;
+    }
+    const offen = S && S.positionen.some((p) => p.menge);
+    const ende = lab.ende ? ` Beendet am ${lab.ende} UTC: Das Startkapital war aufgebraucht (Totalverlust). ${offen ? 'Die restlichen Positionen werden noch geschlossen; neue Positionen eröffnet der Test nicht mehr.' : 'Alle Positionen wurden geschlossen, der Test handelt nicht mehr.'}` : '';
+    return `${LABOR[aktiv] ? 'Test ' + LABOR[aktiv] : 'Labor-Test'}, ${lab.ende ? 'gestartet' : 'läuft seit'} ${k.start} UTC${beschreibung ? ': ' + beschreibung : '.'}${lab.ende ? ende : zuletzt}`;
+  }
+  const kerzenText = (n, lab) => lab.nur_werktage ? `${n} ${n === 1 ? 'Werktag' : 'Werktagen'}`      // "seit ..." für ein altes Signal, mit Dauer
+    : lab.kerze_minuten >= 1440 ? `${n} ${n === 1 ? 'Tag' : 'Tagen'}`
+    : lab.kerze_minuten < 60 ? `${n} ${n === 1 ? 'Kerze' : 'Kerzen'} (${de(0).format(n * lab.kerze_minuten)} Minuten)`
+    : `${n} ${n === 1 ? 'Kerze' : 'Kerzen'} (${de(0).format(n * lab.kerze_minuten / 60)} Stunden)`;
+  const gewichtText = (g) => g ? de(0).format(Math.abs(g) * 100) + ' % ' + (g > 0 ? 'Long' : 'Short') : 'keine Position';
+  const dauerLang = (ms) => { const tage = Math.floor(ms / 86400000); return tage ? `${tage} ${tage === 1 ? 'Tag' : 'Tage'} ${dauer(ms - tage * 86400000)} Std.` : dauer(ms); };
+  const leerText = (id) => !versucht[id] ? 'Der Stand dieses Tests wird geladen …' : unlesbar[id] ? 'Der Stand dieses Tests ist gerade nicht lesbar. Die Seite versucht es von selbst erneut.' : 'Dieser Test ist noch nicht gestartet.';
+  function laborNaechste(lab, jetzt) {                  // nächste Entscheidung: vier Minuten nach dem nächsten Kerzenschluss (Kerzen zählen ab 00:00 UTC)
+    const takt = lab.kerze_minuten * 60000, vier = lab.dip ? 360000 : 240000;   // Test 8 läuft am Ende des Laufs: rund eine Minute nach dem Schluss der 5-Minuten-Kerze (Minute 1 und 6)
+    let t = Math.floor((jetzt - vier) / takt) * takt + takt + vier;
+    if (lab.nur_werktage) while ([0, 6].includes(new Date(t - 86400000).getUTCDay())) t += takt;   // Kerzen, die an einem Samstag oder Sonntag beginnen, zählen bei dieser Einstellung nicht
+    return t;
+  }
+  const HAUPT = new Set();            // Coins der Tests 1 bis 4: nur für sie nimmt die Seite Live-Kurse von Binance (Kursstrom oder Ersatz-Abruf)
+  let binanceListe = null;            // Kontrakte, die Binance führt; nur für Märkte außerhalb des Kursstroms gebraucht
+  async function binanceKennt(coin) { // true oder false; null, wenn die Liste nicht zu bekommen ist
+    if (!binanceListe) {
+      try {
+        const a = await (await fetch(`${REST}/fapi/v1/ticker/price`)).json();
+        if (Array.isArray(a) && a.length) binanceListe = new Set(a.map((t) => t.symbol));
+      } catch (e) {}
+    }
+    return binanceListe ? binanceListe.has(coin + 'USDT') : null;
+  }
+
+  let S = null;                       // Stand des Bots
+  const P = {}, TAG = {}, SIG = {};   // Live-Kurs, 24-h-Veränderung, Signal je Coin
+  const Z = {};                       // DOM je Coin
+  let wsOffen = false, letzterTick = 0, offenerCoin = null, raster = '1h';
+  let tpslImBild = true;              // Test 2: Kursskala bis TP und SL erweitern
+  let kerzenChart = null, kerzenSerie = null, kerzenWs = null, verlaufChart = null, verlaufSerie = null;
+  const vorher = new Map();
+
+  const setze = (e, text, wert, klasse) => {
+    if (e.textContent !== text) {
+      e.textContent = text;
+      const alt = vorher.get(e);
+      if (alt != null && wert != null && wert !== alt) { e.classList.remove('auf', 'ab'); void e.offsetWidth; e.classList.add(wert > alt ? 'auf' : 'ab'); }
+    }
+    if (wert != null) vorher.set(e, wert);
+    if (klasse != null) { e.classList.remove('gut', 'schlecht', 'ruhig'); e.classList.add(klasse); }
+  };
+
+  // ---------------------------------------------------------------- Rechnen ----
+  function konto(st = S) {
+    if (!st) return null;
+    const k = st.kennzahlen[0];
+    let brutto = 0, offen = 0, wert = 0, vollstaendig = true;
+    st.positionen.forEach((p) => {
+      const preis = P[p.coin] ?? p.kurs;
+      if (P[p.coin] == null) vollstaendig = false;
+      brutto += p.kasse + p.menge * preis;
+      if (p.menge) { offen += p.menge * (preis - p.einstieg); wert += Math.abs(p.menge) * preis; }
+    });
+    const ohne = brutto - k.gebuehr_usd + k.funding_usd, mit = ohne + k.rebate_usd;
+    return {brutto, offen, wert, ohne, mit, vollstaendig, kapital: k.kapital, k};
+  }
+
+  // ---------------------------------------------------------------- Anzeige ----
+  const STATS = [['offen', 'Offene Positionen'], ['ohne', 'Netto ohne Rebate'], ['vor', 'Handel vor Gebühren'], ['wert', 'Positionswert'], ['margin', 'Gebundene Margin'],
+                 ['rebate', 'Rebate (85 %)'], ['gebuehr', 'Gebühr gezahlt'], ['funding', 'Funding'], ['volumen', 'Handelsvolumen'], ['orders', 'Orders'],
+                 ['dd', 'Größter Einbruch'], ['ls', 'Long / Short'], ['tage', 'Laufzeit'], ['slip', 'Slippage je Order']];
+  const stat = {};
+  STATS.forEach(([id, name]) => { const d = el('div', 'stat'); d.appendChild(el('span', 'n', name)); stat[id] = d.appendChild(el('span', 'w', '—')); stat[id + '_z'] = d.appendChild(el('span', 'z', ' ')); $('stats').appendChild(d); });
+
+  function zeigeKonto() {
+    const a = konto();
+    if (!a) return;
+    const k = a.k, pz = (x) => x / a.kapital * 100;
+    $('hebel').textContent = de(0).format(k.hebel);
+    const lab = k.labor;
+    // Überschrift: der Text vor der Hebel-Zahl. Für die Tests 1 bis 4 bleibt er, wie er im HTML steht.
+    const kopf = $('hebel').previousSibling, kopftext = `PAPIER-KONTO · ${lab ? `${lab.kopf || 'LABOR-REGEL'} · ${lab.maerkte} ${lab.nur_werktage ? 'MÄRKTE' : 'COINS'}` : '14-TAGE-TREND · 10 COINS'} · HEBEL `;
+    if (kopf.textContent !== kopftext) kopf.textContent = kopftext;
+    // Test 2 und 3: der Abschnitt bis nachgerechnet_bis stammt aus den Aufzeichnungen von Test 1 (kein Vorwärtstest)
+    const nach = k.nachgerechnet_bis ? ` Bis ${k.nachgerechnet_bis} UTC aus den Aufzeichnungen von Test 1 nachgerechnet, seitdem live`
+      + (k.netto_nachgerechnet_usd != null ? ` (Ergebnis seit dem Live-Start: ${vz(Math.round((a.mit - k.netto_nachgerechnet_usd) * 100) / 100 || 0, 2)} $)` : '') + '.' : '';
+    $('regel').textContent = lab ? laborText(k, lab)
+      : k.tagesregel
+      ? `Test 4, Einstiege von Test 1 (${k.start} UTC): Wie Test 1, aber die Richtung wird je Coin nur einmal am Tag übernommen (Stundenschluss 00:00 UTC, gehandelt im Lauf kurz danach). Dazwischen bleibt die Position stehen, auch wenn das Stundensignal dreht. Kein Gewinnziel, kein Stop.`
+        + (k.tagesrichtung_tag ? ` Zuletzt übernommen: ${k.tagesrichtung_tag.slice(8, 10)}.${k.tagesrichtung_tag.slice(5, 7)}. 00:00 UTC.` : '')
+        + nach
+      : k.trail
+      ? `Test 3, Einstiege von Test 1 (${k.start} UTC): Eine Position wird geschlossen, sobald der Kurs ${de(0).format(k.trail * 100)} % vom günstigsten Stand seit dem Einstieg zurückläuft; danach Pause bis zum nächsten Umkehrsignal. Kein Gewinnziel.`
+        + nach
+      : (k.tp || k.sl)
+      ? `Test 2, läuft seit ${k.start} UTC: Einstieg beim Umkehrsignal, Ausstieg bei ${de(0).format(k.sl * 100)} % Verlust oder ${de(0).format(k.tp * 100)} % Gewinn je Position, danach Pause bis zum nächsten Umkehrsignal.`
+        + (k.nachgerechnet_bis ? ' Einstiege von Test 1.' : '') + nach
+      : `Test 1, läuft seit ${k.start} UTC: Positionen reagieren nur auf das Umkehrsignal, ohne Gewinnziel und ohne Stop.`;
+    Object.keys(SS).forEach((id) => {
+      const b = konto(SS[id]), w = $('tabw-' + id);
+      if (!b) { w.textContent = LABOR[id] ? (!versucht[id] ? '—' : unlesbar[id] ? 'Stand nicht lesbar' : 'noch nicht gestartet') : 'noch keine Daten'; return; }
+      setze(w, vz(b.mit / b.kapital * 100, 2) + ' %', b.mit, farbe(b.mit));
+      if (LABOR[id]) {                                    // Labor-Tabs: Titel der Regel aus dem verschlüsselten Stand; der Untertitel bleibt fest
+        const t = $('tab-' + id).querySelector('.t'), titel = b.k.labor && b.k.labor.titel ? `Test ${LABOR[id]} · ${b.k.labor.titel}` : '';
+        if (titel && t.textContent !== titel) t.textContent = titel;
+        if (b.k.nachgerechnet_bis) {                     // Test 8: Abschnitt vor dem Live-Start nachgerechnet
+          const u = 'bis ' + b.k.nachgerechnet_bis.slice(5, 10).split('-').reverse().join('.') + '. nachgerechnet · seit ' + b.k.start.slice(5) + ' UTC';
+          if ($('tabs-' + id).textContent !== u) $('tabs-' + id).textContent = u;
+        }
+        return;
+      }
+      $('tabs-' + id).textContent = (b.k.nachgerechnet_bis ? 'bis ' + b.k.nachgerechnet_bis.slice(5, 10).split('-').reverse().join('.') + '. nachgerechnet · ' : '') + 'seit ' + b.k.start.slice(5) + ' UTC';
+    });
+    setze($('konto'), de(2).format(a.kapital + a.mit) + ' $', a.mit);
+    setze($('netto'), `${vz(a.mit, 2)} $ (${vz(pz(a.mit), 3)} %)`, a.mit, farbe(a.mit));
+    setze(stat.offen, vz(a.offen, 2) + ' $', a.offen, farbe(a.offen)); stat.offen_z.textContent = vz(pz(a.offen), 3) + ' % vom Konto';
+    setze(stat.ohne, vz(a.ohne, 2) + ' $', a.ohne, farbe(a.ohne)); stat.ohne_z.textContent = vz(pz(a.ohne), 3) + ' %';
+    setze(stat.vor, vz(a.brutto, 2) + ' $', a.brutto, farbe(a.brutto)); stat.vor_z.textContent = vz(pz(a.brutto), 3) + ' %';
+    setze(stat.wert, de(0).format(a.wert) + ' $', null); stat.wert_z.textContent = de(2).format(a.wert / a.kapital) + ' × Konto';
+    setze(stat.margin, de(0).format(a.wert / k.hebel) + ' $', null); stat.margin_z.textContent = de(0).format(a.wert / k.hebel / a.kapital * 100) + ' % des Kontos';
+    setze(stat.rebate, de(2).format(k.rebate_usd) + ' $', null); stat.rebate_z.textContent = 'auf den Positionswert';
+    setze(stat.gebuehr, de(2).format(k.gebuehr_usd) + ' $', null); stat.gebuehr_z.textContent = 'Taker 0,08 %';
+    setze(stat.funding, vz(k.funding_usd, 2) + ' $', null, farbe(k.funding_usd));
+    setze(stat.volumen, de(0).format(k.volumen_usd) + ' $', null); stat.volumen_z.textContent = de(1).format(k.volumen_usd / a.kapital) + ' × Konto';
+    setze(stat.orders, String(k.orders), null);
+    const live = pz(a.mit), spitze = Math.max(0, ...S.verlauf.map((r) => r.mit_rebate), live);
+    const dd = Math.max(k.einbruch_pct, (spitze - live) / (100 + spitze) * 100);
+    setze(stat.dd, de(2).format(dd) + ' %', null); stat.dd_z.textContent = 'vom Höchststand';
+    setze(stat.ls, `${k.long} / ${k.short}`, null);
+    const tage = (Date.now() - new Date(k.start.replace(' ', 'T') + ':00Z')) / 864e5;
+    setze(stat.tage, tage < 1 ? de(1).format(tage * 24) + ' Std.' : de(1).format(tage) + ' Tage', null); stat.tage_z.textContent = 'Start ' + k.start + ' UTC' + (k.nachgerechnet_bis ? ' · live seit ' + k.nachgerechnet_bis.slice(8, 10) + '.' + k.nachgerechnet_bis.slice(5, 7) + '. ' + k.nachgerechnet_bis.slice(11) : '');
+    setze(stat.slip, de(3).format(k.slippage_orders_bp / 100) + ' %', null); stat.slip_z.textContent = 'gemessen bei Yubit';
+    if (verlaufSerie && a.vollstaendig) {
+      const t = Math.floor(Date.now() / 60000) * 60, letzte = S.verlauf.length ? Math.floor(new Date(S.verlauf[S.verlauf.length - 1].zeit) / 1000) : 0;
+      if (t > letzte) verlaufSerie.update({time: t, value: live});
+    }
+  }
+
+  function bauePaare() {
+    const box = $('paare'); box.replaceChildren();
+    const lab = labor(S), lh = $('labor-hinweis');
+    lh.hidden = !lab;
+    lh.textContent = !lab ? '' : lab.hinweis ? lab.hinweis : 'Labor-Regel: eine Handelsregel, die bisher nur mit alten Kursen durchgerechnet wurde; hier läuft sie mit laufenden Kursen auf Papier. '
+      + `Eine Kerze ist der Kursverlauf eines festen Zeitabschnitts, hier ${lab.kerze_minuten >= 1440 ? 'ein Tag' : de(0).format(lab.kerze_minuten / 60) + ' Stunden'}. `
+      + 'Nach jeder abgeschlossenen Kerze nennt die Regel je Markt ein Zielgewicht: 0 % heißt keine Position, '
+      + `100 % voller Einsatz für diesen Markt (${de(0).format(S.kennzahlen[0].kapital * S.kennzahlen[0].hebel / lab.maerkte)} $ Positionswert zum Zeitpunkt der Order; danach bewegt sich der Wert mit dem Kurs), Long oder Short. Gehandelt wird nur, wenn sich das Zielgewicht ändert.`
+      + (S.positionen.some((p) => !HAUPT.has(p.coin)) ? ' Für Märkte, die nicht im Sekunden-Kursstrom von Binance laufen, zeigt die Seite den Kurs aus dem letzten Bot-Stand. Wie alt er ist, steht oben bei „Bot-Stand vor“; üblich sind 5 bis 15 Minuten.' : '');
+    const fuss = $('fuss');                              // Fußzeile: für die Tests 1 bis 4 der Text aus dem HTML, für Labor-Tabs ein eigener
+    if (fussAlt === null) fussAlt = fuss.textContent;
+    const fusstext = lab ? LABOR_FUSS : fussAlt;
+    if (fuss.textContent !== fusstext) fuss.textContent = fusstext;
+    S.positionen.forEach((p) => {
+      const z = Z[p.coin] = {};
+      z.box = el('div', 'paar');
+      const b = el('button'); b.type = 'button'; b.setAttribute('aria-expanded', 'false');
+      b.appendChild(el('span', 'coin', p.coin));
+      z.marke = b.appendChild(el('span', 'marke'));
+      const pr = b.appendChild(el('span', 'preis')); z.preis = pr.appendChild(el('span', null, '–')); z.tag = pr.appendChild(el('small', null, ' '));
+      const pn = b.appendChild(el('span', 'pnl')); z.pnl = pn.appendChild(el('span', null, '–')); z.pnlp = pn.appendChild(el('small', null, ' '));
+      b.appendChild(el('span', 'pfeil', '›'));
+      b.addEventListener('click', () => umschalten(p.coin));
+      z.knopf = b; z.box.appendChild(b);
+      z.detail = z.box.appendChild(el('div', 'detail'));
+      z.werte = z.detail.appendChild(el('div', 'werte'));
+      z.w = {};
+      // Labor-Tabs: statt Trend, Drehschwelle, Gewinnziel und Stop (die es dort nicht als feste Kurse gibt) das Zielgewicht der Regel
+      (lab && lab.kombi ? [['einstieg', 'Einstieg (Durchschnitt)'], ['seit', 'Seit (UTC)'], ['menge', 'Menge'], ['wert', 'Positionswert'], ['gewicht', 'Einsatz'], ['teile', 'Aufteilung'], ['stop', 'Nachgezogener Stop (Trend)'], ['ziel', lab.nurstop ? 'Dip-Ziel' : 'Nächstes Dip-Ziel bei'], ['notstop', lab.nurstop ? 'Nachgezogener Stop (Dip)' : 'Dip-Not-Stop bei']]
+           : lab && lab.dip ? [['einstieg', 'Einstieg (Durchschnitt)'], ['seit', 'Seit (UTC)'], ['menge', 'Menge'], ['wert', 'Positionswert'], ['gewicht', 'Einsatz'], ['ziel', 'Nächstes Ziel bei'], ['stop', 'Not-Stop bei']]
+           : lab ? [['einstieg', 'Einstieg'], ['seit', 'Seit (UTC)'], ['menge', 'Menge'], ['wert', 'Positionswert'], ['gewicht', 'Zielgewicht']]
+           : [['einstieg', 'Einstieg'], ['seit', 'Seit (UTC)'], ['menge', 'Menge'], ['wert', 'Positionswert'], ['trend', '14-Tage-Trend'], ['dreh', 'Signal dreht bei'], ['abstand', 'Kurs zur Drehschwelle'], ['ziel', 'Gewinnziel bei'], ['stop', 'Stop bei']]).forEach(([id, name]) => {
+        const d = el('div'); d.appendChild(el('span', null, name)); z.w[id] = d.appendChild(el('span', null, '–')); z.werte.appendChild(d);
+      });
+      if (lab) { z.signal = z.detail.appendChild(el('p', 'hinweis')); z.signal.hidden = true; }   // Hinweis, wenn das Signal alt ist oder noch fehlt
+      z.raster = z.detail.appendChild(el('div', 'raster'));
+      ['5m', '15m', '1h', '4h', '1d'].forEach((r) => { const k = el('button', null, r); k.type = 'button'; k.dataset.r = r; k.addEventListener('click', () => { raster = r; ladeKerzen(p.coin); }); z.raster.appendChild(k); });
+      if (S.kennzahlen[0].tp || S.kennzahlen[0].sl || S.kennzahlen[0].trail) {   // Test 2 und 3: Skala bis TP und SL erweitern (an) oder nur auf die Kerzen (aus)
+        const k = el('button', null, 'TP/SL im Bild'); k.type = 'button'; k.dataset.tpsl = '1'; k.setAttribute('aria-pressed', String(tpslImBild));
+        k.addEventListener('click', () => {
+          tpslImBild = !tpslImBild;
+          document.querySelectorAll('button[data-tpsl]').forEach((b) => b.setAttribute('aria-pressed', String(tpslImBild)));
+          if (kerzenSerie) kerzenSerie.applyOptions({});   // Skala neu berechnen, ohne den Chart neu aufzubauen
+        });
+        z.raster.appendChild(k);
+      }
+      z.kerzen = z.detail.appendChild(el('div', 'kerzen'));
+      const test2 = S.kennzahlen[0].tp || S.kennzahlen[0].sl;   // Test 1 behält den bisherigen Hinweistext unverändert
+      const test3 = S.kennzahlen[0].trail, test4 = S.kennzahlen[0].tagesregel;
+      if (lab && lab.kombi && lab.nurstop) z.detail.appendChild(el('p', 'hinweis', 'Pfeile: Orders des Papier-Bots. Blaue Linie: Durchschnitt der offenen Einstiege. Rot gestrichelt: nachgezogener Stop des Trend-Teils (SL). Der Dip-Teil hat kein Gewinnziel; sein nachgezogener Stop liegt weiter entfernt und ist deshalb nur als Zahl genannt.'));
+      else if (lab && lab.kombi) z.detail.appendChild(el('p', 'hinweis', 'Pfeile: Orders des Papier-Bots. Blaue Linie: Durchschnitt der offenen Einstiege. Rot gestrichelt: nachgezogener Stop des Trend-Teils (SL). Grün gestrichelt: das nächste Gewinnziel des Dip-Teils (TP). Der Not-Stop des Dip-Teils liegt weit vom Einstieg entfernt und ist deshalb nur als Zahl genannt.'));
+      else if (lab && lab.dip) z.detail.appendChild(el('p', 'hinweis', 'Pfeile: Orders des Papier-Bots. Blaue Linie: Durchschnitt der offenen Einstiege. Grün gestrichelt: das nächste Gewinnziel (TP). Der Not-Stop liegt weit vom Einstieg entfernt und ist deshalb nur als Zahl genannt.'));
+      else if (lab) z.detail.appendChild(el('p', 'hinweis', 'Pfeile: Orders des Papier-Bots. Blaue Linie: Einstieg; wurde die Position aufgestockt, der Durchschnitt der Einstiegskurse.'));
+      else z.detail.appendChild(el('p', 'hinweis', 'Pfeile: Orders des Papier-Bots. Blaue Linie: Einstieg. ' + (test2 || test3 || test4 ? 'Gelb gestrichelt' : 'Gestrichelt') + (test4 ? ': Kurs, an dem sich die Richtung beim nächsten Stundenschluss um 00:00 UTC dreht. Test 4 entscheidet nur zu diesem Zeitpunkt; ein Durchstoßen der Linie während des Tages löst nichts aus.' : ': Kurs, an dem sich das Signal beim nächsten Stundenschluss dreht.')
+        + (test3 ? ' Rot gestrichelt: nachgezogener Stop (SL), ' + de(0).format(test3 * 100) + ' % hinter dem günstigsten Kurs seit dem Einstieg; er wandert mit, sobald der Kurs weiter in Richtung der Position läuft. Nachgezogen und geprüft wird nur bei jedem Bot-Lauf (alle 5 Minuten) am Yubit-Mittelkurs; zwischen zwei Läufen bleibt die Linie stehen, und ein kurzes Durchstoßen löst nichts aus.' : '')
+        + (test2 ? ' Grün gestrichelt: Gewinnziel (TP). Rot gestrichelt: Stop (SL). Mit „TP/SL im Bild“ reicht die Kursskala bis zu beiden Linien; ausgeschaltet zeigt sie nur die Kerzen in voller Größe.' : '')));
+      box.appendChild(z.box);
+    });
+    zeigePaare();
+  }
+
+  function zeigePaare() {
+    if (!S) return;
+    // Labor-Tabs: über der Liste steht, für welche Märkte das Signal aussteht (auch ohne Antippen zu sehen)
+    const lab = labor(S), ls = $('labor-signal');
+    const alt = !lab ? [] : S.positionen.filter((p) => p.ziel_alter_kerzen > 0).map((p) => `${p.coin} (seit ${kerzenText(p.ziel_alter_kerzen, lab)})`);
+    const ohne = !lab ? [] : S.positionen.filter((p) => p.ziel_alter_kerzen === null).map((p) => p.coin);
+    const satz = [alt.length ? `Signal nicht aktualisiert: ${alt.join(', ')}.` : '', ohne.length ? `Noch kein Signal (Kurshistorie zu kurz oder Kursdaten unvollständig): ${ohne.join(', ')}.` : ''].filter(Boolean).join(' ');
+    if (ls.textContent !== satz) ls.textContent = satz;
+    ls.hidden = !satz;
+    S.positionen.forEach((p) => {
+      const z = Z[p.coin]; if (!z) return;
+      const preis = P[p.coin] ?? p.kurs, live = P[p.coin] != null;
+      z.marke.textContent = p.wartet ? 'Pause' : p.richtung; z.marke.className = 'marke ' + (p.menge > 0 ? 'long' : p.menge < 0 ? 'short' : '');
+      if (z.w.ziel) {
+        z.w.ziel.textContent = p.ziel_kurs ? kurs(p.ziel_kurs) : (p.wartet && !z.w.notstop ? 'Pause bis zum Dreh' : '–');
+        z.w.stop.textContent = p.stop_kurs ? kurs(p.stop_kurs) : (!z.w.notstop && p.notstop_kurs) ? kurs(p.notstop_kurs) : (z.w.notstop && p.trend_pause ? 'Pause bis zum Dreh' : '–');
+        if (z.w.notstop) z.w.notstop.textContent = p.notstop_kurs ? kurs(p.notstop_kurs) : '–';   // Test 9: Stop des Trend-Teils und Not-Stop des Dip-Teils getrennt
+        if (z.w.teile) z.w.teile.textContent = p.teile || '–';
+      }
+      if (z.w.gewicht) {                                  // Labor-Tabs: umgesetztes Zielgewicht und, falls nötig, der Hinweis zum Signal
+        const g = p.gewicht || 0, a = p.ziel_alter_kerzen, zg = p.ziel_gewicht;
+        const offen = !lab.ende && !lab.pause && a === 0 && zg != null && Math.abs(zg - g) > 1e-9;   // neues Zielgewicht gelesen, aber noch nicht (ganz) umgesetzt
+        z.w.gewicht.textContent = gewichtText(g);
+        z.signal.hidden = !(a === null || a > 0 || offen);
+        z.signal.textContent = a === null ? 'Kein Signal: Für diesen Markt liegen noch nicht genug lückenlose Kursdaten vor.'
+          : a > 0 ? `Signal seit ${kerzenText(a, lab)} nicht aktualisiert. Bis es wieder vorliegt, bleibt die Position unverändert.`
+          : offen ? `Neues Zielgewicht: ${gewichtText(zg)}. Es ist noch nicht ganz umgesetzt (der Markt war nicht handelbar, oder die Order wird in mehreren Schritten ausgeführt).` : '';
+      }
+      setze(z.preis, kurs(preis), live ? preis : null);
+      if (TAG[p.coin] != null) setze(z.tag, '24 h ' + vz(TAG[p.coin], 2) + ' %', null, farbe(TAG[p.coin]));
+      const g = p.menge ? p.menge * (preis - p.einstieg) : 0, gp = p.menge && p.einstieg ? (preis / p.einstieg - 1) * Math.sign(p.menge) * 100 : 0;
+      setze(z.pnl, vz(g, 2) + ' $', g, farbe(g)); setze(z.pnlp, vz(gp, 2) + ' %', null, farbe(gp));
+      z.w.einstieg.textContent = kurs(p.einstieg); z.w.seit.textContent = lab && !p.menge ? '–' : (p.seit || '–');   // Labor-Tabs: ohne Position kein altes Einstiegsdatum
+      z.w.menge.textContent = new Intl.NumberFormat('de-DE', {maximumFractionDigits: 6}).format(p.menge);
+      z.w.wert.textContent = de(0).format(Math.abs(p.menge) * preis) + ' $';
+      const s = SIG[p.coin];
+      if (s && z.w.trend) {
+        const dreh = S.kennzahlen[0].tagesregel ? s.dreh_tag : s.dreh;   // Test 4: Schwelle zum nächsten Tageswechsel
+        z.w.trend.textContent = vz(s.trend * 100, 2) + ' %'; z.w.trend.className = farbe(s.trend);
+        z.w.dreh.textContent = kurs(dreh);
+        const ab = (preis / dreh - 1) * 100;
+        z.w.abstand.textContent = vz(ab, 2) + ' %';
+      }
+    });
+  }
+
+  function zeigeOrders() {
+    const tb = $('orders'); tb.replaceChildren();
+    const lab = labor(S);
+    const anlass = lab ? {einstieg: 'Einstieg', schliessen: 'Schließen', teilverkauf: 'Teilweise schließen', aufstocken: 'Aufstocken', tageslimit: 'Tageslimit', kontoende: 'Konto aufgebraucht', ziel: 'Gewinnziel', stop: 'Not-Stop', nachzug: 'Nachgezogener Stop'}
+      : {einstieg: 'Einstieg', schliessen: 'Umkehrsignal', tageslimit: 'Tageslimit', ziel: 'Gewinnziel', stop: 'Stop', nachzug: 'Nachgezogener Stop'};
+    $('th-coin').textContent = lab && lab.nur_werktage ? 'Markt' : 'Coin';
+    const nb = S.kennzahlen[0].nachgerechnet_bis, start = S.kennzahlen[0].start;   // Test 2 und 3: Orders aus dem nachgerechneten Abschnitt kennzeichnen
+    const woher = (o) => { const t = o.zeit.slice(0, 16).replace('T', ' '); return !nb || t > nb ? '' : (!lab && o.grund === 'einstieg' && t === start ? ' (von Test 1)' : ' (nachgerechnet)'); };
+    [...S.orders_alle].reverse().forEach((o) => {
+      const tr = el('tr');
+      tr.appendChild(el('td', null, o.zeit.slice(0, 16).replace('T', ' '))); tr.appendChild(el('td', null, o.coin));
+      tr.appendChild(el('td', o.kauf ? 'gut' : 'schlecht', o.kauf ? 'Kauf' : 'Verkauf')); tr.appendChild(el('td', null, (o.teil ? o.teil + ': ' : '') + (anlass[o.grund] || o.grund) + woher(o)));
+      tr.appendChild(el('td', 'r', kurs(o.kurs))); tr.appendChild(el('td', 'r', new Intl.NumberFormat('de-DE', {maximumFractionDigits: 6}).format(o.menge))); tr.appendChild(el('td', 'r', de(0).format(o.volumen) + ' $'));
+      tb.appendChild(tr);
+    });
+    if (!S.orders_alle.length) { const tr = el('tr'); const td = el('td', 'ruhig', 'Noch keine Orders.'); td.colSpan = 7; tr.appendChild(td); tb.appendChild(tr); }
+  }
+
+  // ----------------------------------------------------------------- Charts ----
+  const chartOpt = (box) => ({ width: box.clientWidth, height: box.clientHeight, layout: {background: {color: 'transparent'}, textColor: '#5E5A52', fontSize: 11},
+    grid: {vertLines: {color: '#ECE7DB'}, horzLines: {color: '#ECE7DB'}}, rightPriceScale: {borderColor: '#D8D2C4'},
+    timeScale: {borderColor: '#D8D2C4', timeVisible: true, secondsVisible: false}, crosshair: {mode: 0}, handleScale: {axisPressedMouseMove: false} });
+
+  function zeigeVerlauf() {
+    if (!window.LightweightCharts) return;
+    const box = $('verlauf');
+    if (!verlaufChart) {
+      verlaufChart = LightweightCharts.createChart(box, chartOpt(box));
+      verlaufSerie = verlaufChart.addBaselineSeries({baseValue: {type: 'price', price: 0}, topLineColor: '#1E6B45', bottomLineColor: '#B8431F',
+        topFillColor1: 'rgba(30,107,69,.25)', topFillColor2: 'rgba(30,107,69,.02)', bottomFillColor1: 'rgba(184,67,31,.02)', bottomFillColor2: 'rgba(184,67,31,.25)',
+        priceFormat: {type: 'custom', formatter: (v) => vz(v, 2) + ' %', minMove: 0.001}});
+      new ResizeObserver(() => verlaufChart.applyOptions({width: box.clientWidth, height: box.clientHeight})).observe(box);
+    }
+    const punkte = new Map();
+    S.verlauf.forEach((r) => punkte.set(Math.floor(new Date(r.zeit) / 60000) * 60, r.mit_rebate));
+    verlaufSerie.setData([...punkte.entries()].sort((a, b) => a[0] - b[0]).map(([time, value]) => ({time, value})));
+    const nb = S.kennzahlen[0].nachgerechnet_bis;   // Test 2 und 3: Ende des nachgerechneten Abschnitts im Verlauf markieren (Test 1: keine Marke)
+    verlaufSerie.setMarkers(nb ? [{time: Math.floor(new Date(nb.replace(' ', 'T') + ':00Z') / 60000) * 60, position: 'aboveBar', shape: 'arrowDown', color: '#7A5C0A'}] : []);
+    const vh = $('verlauf-hinweis');
+    if (verlaufHinweisAlt === null) verlaufHinweisAlt = vh.textContent;
+    const vhText = labor(S) ? 'Gelber Pfeil: Bis hier nachgerechnet, rechts davon live.' : verlaufHinweisAlt;
+    if (vh.textContent !== vhText) vh.textContent = vhText;
+    vh.hidden = !nb;
+    verlaufChart.timeScale().fitContent();
+  }
+
+  const SEK = {'5m': 300, '15m': 900, '1h': 3600, '4h': 14400, '1d': 86400};
+  function schliesseKerzen() {
+    if (kerzenWs) { try { kerzenWs.onclose = null; kerzenWs.close(); } catch (e) {} kerzenWs = null; }
+    if (kerzenChart) { kerzenChart.remove(); kerzenChart = null; kerzenSerie = null; }
+  }
+  function umschalten(coin) {
+    const war = offenerCoin;
+    if (war) { Z[war].box.classList.remove('offen'); Z[war].knopf.setAttribute('aria-expanded', 'false'); schliesseKerzen(); }
+    offenerCoin = war === coin ? null : coin;
+    if (offenerCoin) { Z[coin].box.classList.add('offen'); Z[coin].knopf.setAttribute('aria-expanded', 'true'); ladeKerzen(coin); }
+  }
+  async function ladeKerzen(coin) {
+    schliesseKerzen();
+    const z = Z[coin], box = z.kerzen, r = raster;
+    z.raster.querySelectorAll('button[data-r]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.r === r)));
+    if (!window.LightweightCharts) { box.textContent = 'Chart-Bibliothek konnte nicht geladen werden.'; return; }
+    box.replaceChildren(); box.style.height = '';
+    const lab = labor(S), keinChart = () => { box.style.height = 'auto'; box.replaceChildren(el('div', 'leer', KEIN_CHART)); };
+    if (lab && !HAUPT.has(coin)) {                         // Markt außerhalb des Kursstroms: erst nachsehen, ob Binance ihn führt
+      const kennt = await binanceKennt(coin);
+      if (offenerCoin !== coin || raster !== r) return;
+      if (kennt === false) { keinChart(); return; }
+    }
+    let daten;
+    try {
+      const a = await (await fetch(`${REST}/fapi/v1/klines?symbol=${coin}USDT&interval=${r}&limit=500`)).json();
+      if (lab && !Array.isArray(a)) { if (offenerCoin === coin && raster === r) keinChart(); return; }   // Binance kennt den Kontrakt nicht
+      daten = a.map((k) => ({time: Math.floor(k[0] / 1000), open: +k[1], high: +k[2], low: +k[3], close: +k[4]}));
+    } catch (e) { box.textContent = 'Kerzen konnten nicht geladen werden. Bitte später erneut öffnen.'; return; }
+    if (offenerCoin !== coin || raster !== r) return;
+    if (lab && !daten.length) { keinChart(); return; }
+    if (!Array.isArray(daten) || !daten.length) { box.textContent = 'Für diesen Coin kamen keine Kerzen zurück.'; return; }
+    const lk = daten[daten.length - 1].close, stellen = lk < 1 ? 5 : lk < 100 ? 3 : 1;
+    kerzenChart = LightweightCharts.createChart(box, chartOpt(box));
+    kerzenSerie = kerzenChart.addCandlestickSeries({upColor: '#1E6B45', downColor: '#FBF9F4', borderVisible: true, borderUpColor: '#1E6B45', borderDownColor: '#1B1A17', wickUpColor: '#1E6B45', wickDownColor: '#1B1A17',
+      priceFormat: {type: 'price', precision: stellen, minMove: Math.pow(10, -stellen)}});
+    kerzenSerie.setData(daten);
+    const s = SEK[r], erste = daten.length ? daten[0].time : 0;
+    const marken = S.orders_alle.filter((o) => o.coin === coin).map((o) => ({time: Math.floor(new Date(o.zeit) / 1000 / s) * s, kauf: o.kauf, kurs: o.kurs, grund: o.grund}))
+      .filter((m) => m.time >= erste).sort((a, b) => a.time - b.time)
+      .map((m) => ({time: m.time, position: m.kauf ? 'belowBar' : 'aboveBar', color: m.kauf ? '#1E6B45' : '#B8431F', shape: m.kauf ? 'arrowUp' : 'arrowDown',
+                    text: (m.kauf ? 'Kauf ' : 'Verkauf ') + kurs(m.kurs)}));
+    kerzenSerie.setMarkers(marken);
+    const p = S.positionen.find((x) => x.coin === coin);
+    if (p && p.menge) kerzenSerie.createPriceLine({price: p.einstieg, color: '#1B1A17', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: 'Einstieg ' + p.richtung});
+    // Test 2: Gewinnziel (TP) und Stop (SL) einzeichnen und die Kursskala so erweitern, dass beide Linien immer im Bild sind
+    const grenzen = [];
+    if (p && p.ziel_kurs) { kerzenSerie.createPriceLine({price: p.ziel_kurs, color: '#1E6B45', lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: 'TP'}); grenzen.push(p.ziel_kurs); }
+    if (p && p.stop_kurs) { kerzenSerie.createPriceLine({price: p.stop_kurs, color: '#B8431F', lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: 'SL'}); grenzen.push(p.stop_kurs); }
+    if (grenzen.length) kerzenSerie.applyOptions({autoscaleInfoProvider: (original) => {
+      const res = original();
+      if (!tpslImBild || !res || !res.priceRange) return res;
+      return {priceRange: {minValue: Math.min(res.priceRange.minValue, ...grenzen), maxValue: Math.max(res.priceRange.maxValue, ...grenzen)}, margins: res.margins};
+    }});
+    if (SIG[coin] && !lab) kerzenSerie.createPriceLine({price: S.kennzahlen[0].tagesregel ? SIG[coin].dreh_tag : SIG[coin].dreh, color: '#7A5C0A', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Signal dreht'});
+    new ResizeObserver(() => kerzenChart && kerzenChart.applyOptions({width: box.clientWidth, height: box.clientHeight})).observe(box);
+    stadtKerzen(coin, z, daten, p, r);   // Zusatz: Positions-Replay unter dem Chart (nur Anzeige)
+    try {
+      kerzenWs = new WebSocket(`${WS}/ws/${coin.toLowerCase()}usdt@kline_${r}`);
+      kerzenWs.onmessage = (ev) => { const k = JSON.parse(ev.data).k; if (k && kerzenSerie) kerzenSerie.update({time: Math.floor(k.t / 1000), open: +k.o, high: +k.h, low: +k.l, close: +k.c}); };
+    } catch (e) {}
+  }
+
+  // ------------------------------------------------------------------ Daten ----
+  async function ladeStand(nur) {       // nur: Funktion, die je Tab sagt, ob er jetzt geladen wird (ohne Angabe: alle)
+    for (const [id, url] of Object.entries(DATEIEN)) {
+      if (typeof nur === 'function' && !nur(id)) continue;
+      if (spaeter[id] > Date.now()) continue;
+      try {
+        const r = await fetch(url + '?t=' + Math.floor(Date.now() / 30000), LABOR[id] ? {cache: 'no-store', signal: grenze(30000)} : {cache: 'no-store'});
+        if (!r.ok) { if (LABOR[id]) { versucht[id] = true; unlesbar[id] = false; if (!SS[id]) spaeter[id] = Date.now() + 600000; } continue; }
+        if (LABOR[id]) { versucht[id] = true; unlesbar[id] = true; }   // unlesbar gilt, bis der Stand entschlüsselt und geprüft ist
+        const d = await entschluesseln(await r.json());
+        if (!d.kennzahlen || !d.positionen) continue;
+        // ein Labor-Tab zeigt nur einen vollständigen Stand mit dem Block "labor": Ein fehlerhafter Stand darf die Seite nie stören
+        if (LABOR[id] && !(labor(d) && Array.isArray(d.positionen) && d.positionen.length && d.positionen.every((p) => p && typeof p.coin === 'string')
+                           && Array.isArray(d.orders_alle) && d.orders_alle.every((o) => o && typeof o.zeit === 'string')
+                           && Array.isArray(d.verlauf) && d.verlauf.every((v) => v && typeof v === 'object')
+                           && typeof d.kennzahlen[0].start === 'string' && d.kennzahlen[0].kapital > 0 && d.kennzahlen[0].hebel > 0
+                           && labor(d).kerze_minuten > 0 && labor(d).maerkte > 0 && (labor(d).kerze == null || typeof labor(d).kerze === 'string'))) continue;
+        if (LABOR[id]) unlesbar[id] = false;
+        if (!labor(d)) d.positionen.forEach((p) => HAUPT.add(p.coin));
+        const alt = SS[id];
+        SS[id] = d;
+        if (leer === id) { waehle(id); continue; }
+        if (id !== aktiv) continue;
+        const neu = !alt || d.geschrieben !== alt.geschrieben, ersterLauf = !S;
+        S = d;
+        if (ersterLauf) bauePaare();
+        if (neu) { zeigeOrders(); zeigeVerlauf(); zeigePaare(); if (offenerCoin && !ersterLauf) ladeKerzen(offenerCoin); }
+      } catch (e) { if (LABOR[id] && !SS[id]) { versucht[id] = true; unlesbar[id] = true; } }
+    }
+    zeigeKonto();
+    if (!S) $('status').textContent = 'Bot-Stand konnte nicht geladen werden';
+    if (leer && SS[leer]) waehle(leer);   // der Test ist inzwischen gestartet: vom Hinweis zur Anzeige wechseln
+    else if (leer && $('leer-text').textContent !== leerText(leer)) $('leer-text').textContent = leerText(leer);
+  }
+  const grenze = (ms) => {              // Zeitgrenze für einen Abruf; ältere Browser kennen AbortSignal.timeout nicht
+    if (window.AbortSignal && AbortSignal.timeout) return AbortSignal.timeout(ms);
+    if (!window.AbortController) return undefined;
+    const c = new AbortController(); setTimeout(() => c.abort(), ms); return c.signal;
+  };
+  const ladeBestand = () => ladeStand((id) => !LABOR[id]);
+  let laborLaedt = false;
+  async function ladeLabor() {          // nie zwei Abrufe der Labor-Dateien zugleich
+    if (laborLaedt) return;
+    laborLaedt = true;
+    try { await ladeStand((id) => !!LABOR[id]); } finally { laborLaedt = false; }
+  }
+  function zeigeLeer(id) {              // Labor-Tab ohne Stand: ruhiger Hinweis; die anderen Tabs laufen weiter
+    if (offenerCoin) umschalten(offenerCoin);
+    schatten = null; leer = id;
+    $('ansicht-bot').hidden = true; $('ansicht-schatten').hidden = true; $('ansicht-leer').hidden = false; $('l-naechste').hidden = true; $('standname').textContent = 'Bot-Stand';
+    $('leer-titel').textContent = 'PAPIER-KONTO · ' + $('tab-' + id).querySelector('.t').textContent.toUpperCase();
+    $('leer-text').textContent = leerText(id);
+    Object.keys(SS).forEach((k) => $('tab-' + k).setAttribute('aria-pressed', String(k === id)));
+    document.querySelectorAll('#tabs button[data-s]').forEach((b) => b.setAttribute('aria-pressed', 'false'));
+    window.scrollTo({top: 0});
+  }
+  function waehle(id) {
+    if (!SS[id]) { if (LABOR[id] && S) zeigeLeer(id); return; }   // den Hinweis erst zeigen, wenn der erste Stand angezeigt ist
+    if (schatten || leer) {             // zurück von einem Schattentest oder vom Hinweis eines noch nicht gestarteten Tests
+      schatten = null; leer = null;
+      $('ansicht-schatten').hidden = true; $('ansicht-leer').hidden = true; $('ansicht-bot').hidden = false; $('l-naechste').hidden = false; $('standname').textContent = 'Bot-Stand';
+      document.querySelectorAll('#tabs button[data-s]').forEach((b) => b.setAttribute('aria-pressed', 'false'));
+      if (id === aktiv) { Object.keys(SS).forEach((k) => $('tab-' + k).setAttribute('aria-pressed', String(k === id))); return; }
+    } else if (id === aktiv) return;
+    if (offenerCoin) umschalten(offenerCoin);
+    aktiv = id; S = SS[id];
+    Object.keys(SS).forEach((k) => $('tab-' + k).setAttribute('aria-pressed', String(k === id)));
+    vorher.clear();
+    bauePaare(); zeigeOrders(); zeigeVerlauf(); zeigeKonto();
+    if (sigZeit && !labor(S) && (sigVerpasst || Date.now() - sigZeit > 330000)) ladeSignale();   // war zuletzt ein Labor-Tab offen, können die Trend-Daten älter als fünf Minuten sein
+  }
+  Object.keys(DATEIEN).forEach((id) => $('tab-' + id).addEventListener('click', () => {
+    waehle(id);
+    if (LABOR[id] && window.innerWidth < 600 && (leer === id || (!leer && !schatten && aktiv === id))) document.querySelector(leer ? '#ansicht-leer .kopf' : '#ansicht-bot .kopf').scrollIntoView({block: 'start'});
+  }));
+
+  // ------------------------------------------------------------ Schattentests ----
+  const S_STATS = [['status', 'Status'], ['ohne', 'Netto ohne Rebate'], ['trades', 'Abgeschlossene Trades'], ['quote', 'Gewinnquote'], ['je', 'Netto je Trade'],
+                   ['offen', 'Offene Positionen'], ['dd', 'Größter Rückgang'], ['gebuehr', 'Gebühr gezahlt'], ['rebate', 'Rebate (85 %, angenommen)'], ['funding', 'Funding'],
+                   ['slip', 'Slippage'], ['volumen', 'Handelsvolumen'], ['groesse', 'Größe je Position'], ['tage', 'Laufzeit'], ['daten', 'Daten bis'], ['lauf', 'Letzter Lauf'],
+                   ['yubit', 'Yubit-Kosten je Einstieg'], ['kontrolle', 'Kontrolle gegen Archiv']];
+  const sStat = {};
+  S_STATS.forEach(([id, name]) => { const d = el('div', 'stat'); d.appendChild(el('span', 'n', name)); sStat[id] = d.appendChild(el('span', 'w', '—')); sStat[id + '_z'] = d.appendChild(el('span', 'z', ' ')); $('s-stats').appendChild(d); });
+  const sTest = () => SCH && SCH.tests.find((t) => t.id === schatten);
+  const zeit16 = (t) => t ? String(t).slice(0, 16).replace('T', ' ') : '–';
+
+  function baueSchattenTabs() {
+    SCH.tests.forEach((t) => {
+      let b = document.querySelector(`#tabs button[data-s="${CSS.escape(t.id)}"]`);
+      if (!b) {
+        b = el('button'); b.type = 'button'; b.dataset.s = t.id; b.setAttribute('aria-pressed', 'false');
+        b.appendChild(el('span', 't')); b.appendChild(el('span', 's')); b.appendChild(el('span', 'w'));
+        b.addEventListener('click', () => waehleSchatten(t.id));
+        $('tabs').appendChild(b);
+      }
+      b.querySelector('.t').textContent = t.kurz || t.name;
+      b.querySelector('.s').textContent = (t.untertitel ? t.untertitel + ' · ' : '') + (t.live ? 'live · ' : '') + 'seit ' + String(t.start).slice(5, 10).split('-').reverse().join('.') + '.';
+      const w = b.querySelector('.w'), r = t.rendite_mit_rebate_pct;
+      w.textContent = t.trades || (t.offene_positionen || []).length ? vz(r, 2) + ' %' : t.status;
+      w.className = 'w ' + (t.trades ? farbe(r) : 'ruhig');
+    });
+  }
+  function waehleSchatten(id) {
+    if (!SCH || !SCH.tests.some((t) => t.id === id)) return;
+    if (offenerCoin) umschalten(offenerCoin);
+    schatten = id; leer = null;
+    $('ansicht-leer').hidden = true;
+    $('ansicht-bot').hidden = true; $('ansicht-schatten').hidden = false; $('l-naechste').hidden = true; $('standname').textContent = 'Stand';
+    Object.keys(SS).forEach((k) => $('tab-' + k).setAttribute('aria-pressed', 'false'));
+    document.querySelectorAll('#tabs button[data-s]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.s === id)));
+    zeigeSchatten();
+    window.scrollTo({top: 0});
+  }
+  function zeigeSchatten() {
+    const t = sTest(); if (!t) return;
+    const pz = (usd) => usd / t.kapital * 100, gewinn = t.kontostand - t.kapital;
+    $('s-titel').textContent = `PAPIER-KONTO · SCHATTENTEST · ${(t.kurz || t.name || '').toUpperCase()} · ${t.maerkte.length} COINS · HEBEL ${de(0).format(t.hebel)}`;
+    $('s-konto').textContent = de(2).format(t.kontostand) + ' $';
+    const n = $('s-netto'); n.textContent = `${vz(gewinn, 2)} $ (${vz(t.rendite_mit_rebate_pct, 3)} %)`; n.className = farbe(gewinn);
+    const m = $('s-marke'); m.textContent = t.beobachtung ? 'nicht validiert' : 'Prüfung formal bestanden'; m.className = 'marke ' + (t.beobachtung ? 'warn' : '');
+    $('s-regel').textContent = (t.klartext || t.regel || '') + ' Märkte: ' + t.maerkte.join(', ') + '.';
+    $('s-pruef').textContent = 'Prüfstand: ' + (t.validierung || '–');
+    const satz = (id, text, zusatz, klasse) => { sStat[id].textContent = text; sStat[id].className = 'w ' + (klasse || ''); sStat[id + '_z'].textContent = zusatz || ' '; };
+    const schlecht = ['gescheitert', 'abgebrochen', 'Fehler'].includes(t.status);
+    satz('status', t.status, t.ereignis || ((t.fehler || []).length ? t.fehler[0] : (t.datenluecken || []).length ? t.datenluecken.length + ' Datenlücken' : 'keine Fehler'), schlecht ? 'schlecht' : '');
+    satz('ohne', vz(t.rendite_ohne_rebate_pct, 3) + ' %', 'volle Gebühr, kein Rebate', farbe(t.rendite_ohne_rebate_pct));
+    satz('trades', String(t.trades), t.trades_je_tag != null ? de(1).format(t.trades_je_tag) + ' je Tag' : ' ');
+    satz('quote', t.gewinnquote != null ? de(0).format(t.gewinnquote * 100) + ' %' : '–', t.profit_factor != null ? 'Gewinn zu Verlust ' + de(2).format(t.profit_factor) : ' ');
+    satz('je', t.netto_je_trade_bp != null ? vz(t.netto_je_trade_bp / 100, 3) + ' %' : '–', t.haltedauer_min != null ? 'Haltedauer ' + de(0).format(t.haltedauer_min) + ' Min.' : ' ', t.netto_je_trade_bp != null ? farbe(t.netto_je_trade_bp) : '');
+    satz('offen', String((t.offene_positionen || []).length), vz(t.unrealisiert_usd, 2) + ' $ offen', '');
+    satz('dd', de(2).format(t.rueckgang_max_pct) + ' %', 'aktuell ' + de(2).format(t.rueckgang_aktuell_pct) + ' %');
+    satz('gebuehr', de(2).format(t.gebuehr_usd) + ' $', 'Taker 0,08 %');
+    satz('rebate', de(2).format(t.rebate_usd_angenommen) + ' $', 'noch nicht von Yubit bestätigt');
+    satz('funding', vz(t.funding_usd, 2) + ' $', t.funding_ausstehend ? t.funding_ausstehend + ' Trades noch ohne Funding' : ' ', farbe(t.funding_usd));
+    satz('slip', de(2).format(t.slippage_usd) + ' $', 'festes Modell');
+    satz('volumen', de(0).format(t.volumen_usd) + ' $', de(1).format(t.volumen_usd / t.kapital) + ' × Konto');
+    satz('groesse', de(0).format(t.positionsgroesse_usd) + ' $', de(0).format(t.kapital) + ' $ Kapital');
+    satz('tage', de(1).format(t.laufzeit_tage) + ' Tage', 'Start ' + zeit16(t.start) + ' UTC');
+    satz('daten', t.daten_bis ? String(t.daten_bis).slice(5, 16) : '–', t.live ? 'in Echtzeit' : 'ein Tag Verzug');
+    satz('lauf', t.letzter_lauf ? String(t.letzter_lauf).slice(5, 16) : '–', t.live ? 'UTC, alle 5 Minuten' : 'UTC, täglich');
+    const y = t.yubit, k = t.kontrolle;
+    satz('yubit', y ? de(3).format(y.mittel_bp / 100) + ' %' : '–', y ? `${y.anzahl} gemessen · Modell ${de(3).format(y.modell_bp / 100)} %` : (t.live ? 'noch kein Einstieg' : 'nur im Live-Betrieb'), y ? (y.mittel_bp <= y.modell_bp ? 'gut' : 'schlecht') : '');
+    satz('kontrolle', k ? (k.ok ? 'stimmt überein' : 'Abweichung') : '–', k ? `${k.gleich} von ${k.archiv} Trades · bis ${String(k.stand).slice(5)}` : (t.live ? 'erste Prüfung steht aus' : 'nur im Live-Betrieb'), k ? (k.ok ? 'gut' : 'schlecht') : '');
+    $('s-hinweis-live').hidden = !t.live; $('s-hinweis-archiv').hidden = !!t.live;
+    // Konto-Verlauf (Tagesstände)
+    const box = $('s-verlauf'), punkte = (t.verlauf || []).map((r) => ({time: r.tag, value: (r.kontostand / t.kapital - 1) * 100}));
+    const leer = !punkte.length || !window.LightweightCharts;
+    box.hidden = leer; $('s-verlauf-leer').hidden = !leer;
+    if (!leer) {
+      if (!sChart) {
+        sChart = LightweightCharts.createChart(box, chartOpt(box));
+        sSerie = sChart.addBaselineSeries({baseValue: {type: 'price', price: 0}, topLineColor: '#1E6B45', bottomLineColor: '#B8431F',
+          topFillColor1: 'rgba(30,107,69,.25)', topFillColor2: 'rgba(30,107,69,.02)', bottomFillColor1: 'rgba(184,67,31,.02)', bottomFillColor2: 'rgba(184,67,31,.25)',
+          priceFormat: {type: 'custom', formatter: (v) => vz(v, 2) + ' %', minMove: 0.001}});
+        new ResizeObserver(() => sChart.applyOptions({width: box.clientWidth, height: box.clientHeight})).observe(box);
+      }
+      sSerie.setData([{time: String(t.start).slice(0, 10) < punkte[0].time ? String(t.start).slice(0, 10) : punkte[0].time, value: 0}, ...punkte].filter((p, i, a) => !i || p.time > a[i - 1].time));
+      sChart.timeScale().fitContent();
+    }
+    // Tabellen
+    const zeile = (tb, zellen) => { const tr = el('tr'); zellen.forEach(([text, klasse]) => tr.appendChild(el('td', klasse || null, text))); tb.appendChild(tr); };
+    const leerzeile = (tb, text, spalten) => { const tr = el('tr'), td = el('td', 'ruhig', text); td.colSpan = spalten; tr.appendChild(td); tb.appendChild(tr); };
+    const to = $('s-offen'); to.replaceChildren();
+    (t.offene_positionen || []).forEach((p) => zeile(to, [[p.coin], [p.richtung, p.richtung === 'Long' ? 'gut' : 'schlecht'], [zeit16(p.seit)], [kurs(p.einstieg), 'r'], [vz(p.ergebnis_usd, 2) + ' $', 'r ' + farbe(p.ergebnis_usd)]]));
+    if (!(t.offene_positionen || []).length) leerzeile(to, 'Keine offene Position (Stand: ' + (t.daten_bis || '–') + ').', 5);
+    const tt = $('s-trades'); tt.replaceChildren();
+    (t.letzte_trades || []).forEach((x) => zeile(tt, [[zeit16(x.aus)], [x.coin], [x.richtung, x.richtung === 'Long' ? 'gut' : 'schlecht'], [zeit16(x.ein)], [vz(x.netto_bp / 100, 2) + ' %', 'r ' + farbe(x.netto_bp)], [vz(x.usd, 2) + ' $', 'r ' + farbe(x.usd)]]));
+    if (!(t.letzte_trades || []).length) leerzeile(tt, 'Noch keine abgeschlossenen Trades. Gewertet wird ab ' + zeit16(t.start) + ' UTC; die Daten kommen mit einem Tag Verzug.', 6);
+  }
+  async function ladeBuendel(url, takt) {
+    try {
+      const r = await fetch(url + '?t=' + Math.floor(Date.now() / takt), {cache: 'no-store'});
+      if (!r.ok) return null;
+      const d = await entschluesseln(await r.json());
+      return d && Array.isArray(d.tests) ? d : null;
+    } catch (e) { return null; }
+  }
+  async function ladeSchatten() {
+    const [a, l] = await Promise.all([ladeBuendel(SCHATTEN_URL, 300000), ladeBuendel(LIVE_URL, 60000)]);
+    if (a) ARCHIVSTAND = a;
+    if (l) LIVESTAND = l;
+    if (!ARCHIVSTAND && !LIVESTAND) return;
+    const live = (LIVESTAND ? LIVESTAND.tests : []).filter((t) => t && t.id && t.status !== 'Fehler'), benutzt = new Set();
+    const tests = (ARCHIVSTAND ? ARCHIVSTAND.tests : []).map((t) => {
+      const x = live.find((v) => v.ersetzt === t.id);
+      if (!x) return t;
+      benutzt.add(x.id);
+      return String(x.daten_bis || '') > String(t.daten_bis || '') ? {...x, id: t.id, live_id: x.id} : t;      // der neuere Datenstand gewinnt
+    });
+    live.filter((x) => !benutzt.has(x.id) && !x.ersetzt).forEach((x) => tests.push(x));
+    SCH = {tests}; baueSchattenTabs();
+    if (schatten) zeigeSchatten();
+  }
+
+  let sigZeit = 0;                    // letzter Abruf der Stundenkerzen für Trend und Drehschwelle
+  let sigVerpasst = false;            // ein fälliger Abruf fiel aus, weil gerade ein Labor-Tab offen war
+  async function ladeSignale() {
+    if (!S) return;
+    if (labor(S)) { sigVerpasst = true; return; }   // Labor-Tabs brauchen weder Trend noch Drehschwelle: keine Stundenkerzen laden, aber merken
+    sigZeit = Date.now(); sigVerpasst = false;
+    await Promise.all(S.positionen.map(async (p) => {
+      try {
+        const a = await (await fetch(`${REST}/fapi/v1/klines?symbol=${p.coin}USDT&interval=1h&limit=340`)).json();
+        const n = a.length; if (n < 339) return;
+        // dreh_tag (nur Test 4, Tagesregel): Schluss 336 Stunden vor der Kerze, die am nächsten Tageswechsel (00:00 UTC) schließt
+        const bis23 = (23 - new Date(+a[n - 1][0]).getUTCHours() + 24) % 24;
+        SIG[p.coin] = {trend: +a[n - 2][4] / +a[n - 2 - 336][4] - 1, dreh: +a[n - 337][4], dreh_tag: +a[n - 337 + bis23][4]};
+      } catch (e) {}
+    }));
+    zeigePaare();
+  }
+
+  function verbinde() {
+    if (!S) return;
+    // Der Kursstrom führt immer die Coins der Tests 1 bis 4, auch wenn beim (Wieder-)Verbinden gerade ein Labor-Tab mit anderen Märkten offen ist
+    const quelle = (labor(S) && Object.values(SS).find((x) => x && !labor(x))) || S;
+    let ws;
+    try { ws = new WebSocket(`${WS}/stream?streams=` + quelle.positionen.map((p) => p.coin.toLowerCase() + 'usdt@miniTicker').join('/')); } catch (e) { setTimeout(verbinde, 5000); return; }
+    ws.onopen = () => { wsOffen = true; };
+    ws.onmessage = (ev) => {
+      const d = JSON.parse(ev.data).data; if (!d || !d.s) return;
+      const coin = d.s.replace('USDT', '');
+      P[coin] = +d.c; if (+d.o) TAG[coin] = (+d.c / +d.o - 1) * 100;
+      letzterTick = Date.now(); schmutzig = true;
+    };
+    ws.onclose = () => { wsOffen = false; setTimeout(verbinde, 3000); };
+    ws.onerror = () => { try { ws.close(); } catch (e) {} };
+  }
+  async function pollen() {                                   // Rückfall, falls der Datenstrom nicht steht
+    if (wsOffen && Date.now() - letzterTick < 8000) return;
+    try {
+      const a = await (await fetch(`${REST}/fapi/v1/ticker/24hr`)).json();
+      a.forEach((t) => { const coin = t.symbol.replace('USDT', ''); if (Z[coin] && HAUPT.has(coin) && t.symbol.endsWith('USDT')) { P[coin] = +t.lastPrice; TAG[coin] = +t.priceChangePercent; } });
+      letzterTick = Date.now(); schmutzig = true;
+    } catch (e) {}
+  }
+
+  let schmutzig = false;
+  setInterval(() => { if (schmutzig) { schmutzig = false; zeigeKonto(); zeigePaare(); } }, 500);
+  setInterval(() => {
+    const j = new Date();
+    $('uhr').textContent = zwei(j.getUTCHours()) + ':' + zwei(j.getUTCMinutes()) + ':' + zwei(j.getUTCSeconds());
+    const alter = Date.now() - letzterTick, p = $('punkt');
+    if (letzterTick && alter < 10000) { p.className = 'punkt an'; $('status').textContent = 'Live · Kurse im Sekundentakt'; }
+    else if (letzterTick) { p.className = 'punkt aus'; $('status').textContent = 'Kurse stehen seit ' + dauer(alter); }
+    const st = schatten ? sTest() : null;
+    if (leer) $('botalter').textContent = '–';
+    else if (st && st.aktualisiert) $('botalter').textContent = 'vor ' + dauer(Date.now() - new Date(st.aktualisiert));
+    else if (S && S.geschrieben) $('botalter').textContent = 'vor ' + dauer(Date.now() - new Date(S.geschrieben));
+    const naechste = new Date(j);
+    if (!schatten && S && S.kennzahlen[0].tagesregel) { naechste.setUTCHours(0, 4, 0, 0); if (naechste <= j) naechste.setUTCDate(naechste.getUTCDate() + 1); }   // Test 4 entscheidet einmal am Tag
+    else { naechste.setUTCMinutes(4, 0, 0); if (naechste <= j) naechste.setUTCHours(naechste.getUTCHours() + 1); }
+    const lab = schatten ? null : labor(S);            // Labor-Tests entscheiden vier Minuten nach dem Schluss ihrer Kerze
+    if (!lab) $('naechste').textContent = dauer(naechste - j);
+    else if (lab.ende) $('naechste').textContent = '–';     // beendeter Test: keine Prüfung mehr
+    else if (!lab.dip && S.geschrieben && laborNaechste(lab, new Date(S.geschrieben).getTime()) <= j.getTime())   // der gezeigte Stand ist älter als die letzte fällige Prüfung
+      $('naechste').textContent = '0:00 · Ergebnis folgt mit dem nächsten Stand';
+    else $('naechste').textContent = dauerLang(laborNaechste(lab, j.getTime()) - j);
+  }, 1000);
+
+  let gestartet = false;
+  async function starten() {
+    if (gestartet) return; gestartet = true;
+    $('tor').hidden = true; $('seite').hidden = false;
+    await ladeBestand();                // wie bisher: erst die vier bestehenden Stände, dann Kurse, Signale und Schattentests
+    verbinde(); pollen(); ladeSignale(); ladeSchatten();
+    ladeLabor();                        // die drei neuen Stände kommen ohne Warten dazu
+    setInterval(() => { ladeBestand(); ladeLabor(); }, 60000); setInterval(pollen, 4000); setInterval(ladeSignale, 300000); setInterval(ladeSchatten, 120000);
+  }
+  // ============================================ Agenten-Stadt und Crawler (nur Anzeige) ====
+  // Zusatz zur Darstellung: die Stadt als Startansicht und das Positions-Replay mit dem Crawler. Der Block liest nur SS, S und die
+  // schon geladenen Kerzen. Er ändert keinen Stand, keine Order und keine Signallogik. Wirft er einen Fehler, fällt er still weg und
+  // das Board läuft wie zuvor.
+  function stadtKerzen(coin, z, daten, p, r) { try { STADT.kerzen(coin, z, daten, p, r); } catch (e) {} }
+  const STADT = (() => {
+    const nichts = {kerzen() {}};
+    try {
+      const GUT = '#1E6B45', ROT = '#B8431F', TINTE = '#1B1A17', GRAU = '#5E5A52', PAPIER = '#F3EFE6', FLAECHE = '#FBF9F4', LINIE = '#D8D2C4';
+      const MONOF = '"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace', SANSF = '"Instrument Sans",system-ui,-apple-system,sans-serif';
+      const RUHIG = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+      const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; };
+      const klemme = (v, a, b) => v < a ? a : v > b ? b : v;
+      const weich = (u) => u * u * (3 - 2 * u);
+      const zahl = (v, d) => v.toLocaleString('de-DE', {minimumFractionDigits: d, maximumFractionDigits: d});
+      const proz = (v, d) => (v > 0 ? '+' : v < 0 ? '−' : '') + zahl(Math.abs(v), d == null ? 2 : d) + ' %';
+      const ton = (v) => v > 0 ? GUT : v < 0 ? ROT : GRAU;
+      const stellenVon = (k) => k < 1 ? 5 : k < 100 ? 3 : 1;
+      const zeitText = (t) => { const d = new Date(t * 1000), z2 = (n) => (n < 10 ? '0' : '') + n; return z2(d.getUTCDate()) + '.' + z2(d.getUTCMonth() + 1) + '. ' + z2(d.getUTCHours()) + ':' + z2(d.getUTCMinutes()); };
+      const sek = (s) => Math.floor(new Date(s.length <= 16 ? s.replace(' ', 'T') + ':00Z' : s) / 1000);
+
+      // ---- Crawler: Körper folgt einem Ziel, die Füße setzen einzeln um, die Knie werden je Bild neu berechnet
+      function Spinne(x, y, mass) {
+        this.x = x; this.y = y; this.a = -Math.PI / 2; this.vx = 0; this.vy = 0; this.s = mass; this.t = 0;
+        this.kern = GUT; this.tempo = 240; this.griff = null; this.griffBein = null; this.ringe = []; this.beine = [];
+        const defs = [[14, 35, 78], [5, 70, 84], [-4, 110, 84], [-13, 145, 80]];
+        [-1, 1].forEach((seite) => defs.forEach((d, i) => {
+          const w = d[1] * Math.PI / 180;
+          this.beine.push({seite, i, hx: d[0], hy: 12 * seite, rx: Math.cos(w) * d[2], ry: Math.sin(w) * d[2] * seite, fx: 0, fy: 0, schritt: null, gruppe: (i + (seite > 0 ? 1 : 0)) % 2});
+        }));
+        this.beine.forEach((b) => { const q = this.welt(b.rx, b.ry); b.fx = q.x; b.fy = q.y; });
+      }
+      Spinne.prototype.welt = function (lx, ly) { const c = Math.cos(this.a), s = Math.sin(this.a), k = this.s; return {x: this.x + (lx * c - ly * s) * k, y: this.y + (lx * s + ly * c) * k}; };
+      Spinne.prototype.greife = function (q) {
+        if (!q) { this.griff = null; this.griffBein = null; return; }
+        if (!this.griffBein) {
+          let best = null, bd = 1e9;
+          this.beine.forEach((b) => { if (b.i !== 0) return; const w = this.welt(b.rx, b.ry), d = Math.hypot(w.x - q.x, w.y - q.y); if (d < bd) { bd = d; best = b; } });
+          this.griffBein = best;
+        }
+        this.griff = q;
+      };
+      Spinne.prototype.schritt = function (dt, tx, ty) {
+        if (dt <= 0) return;
+        this.t += dt;
+        const dx = tx - this.x, dy = ty - this.y, d = Math.hypot(dx, dy), sp = Math.min(this.tempo, d * 5);
+        const wx = d > 0.5 ? dx / d * sp : 0, wy = d > 0.5 ? dy / d * sp : 0, k = 1 - Math.exp(-dt * 8);
+        this.vx += (wx - this.vx) * k; this.vy += (wy - this.vy) * k; this.x += this.vx * dt; this.y += this.vy * dt;
+        let soll = this.a;
+        if (this.griff) soll = Math.atan2(this.griff.y - this.y, this.griff.x - this.x);
+        else if (Math.hypot(this.vx, this.vy) > 12) soll = Math.atan2(this.vy, this.vx);
+        let da = soll - this.a; da = Math.atan2(Math.sin(da), Math.cos(da)); this.a += da * (1 - Math.exp(-dt * (this.griff ? 5 : 7)));
+        const laeuft = [0, 0], grenze = 26 * this.s;
+        this.beine.forEach((b) => { if (b.schritt) laeuft[b.gruppe]++; });
+        this.beine.forEach((b) => {
+          if (this.griff && b === this.griffBein) { const q = 1 - Math.exp(-dt * 18); b.schritt = null; b.fx += (this.griff.x - b.fx) * q; b.fy += (this.griff.y - b.fy) * q; return; }
+          const p = this.welt(b.rx, b.ry), gx = p.x + this.vx * 0.13, gy = p.y + this.vy * 0.13;
+          if (b.schritt) {
+            b.schritt.t += dt / 0.12;
+            const u = Math.min(1, b.schritt.t), e = weich(u);
+            b.fx = b.schritt.sx + (gx - b.schritt.sx) * e; b.fy = b.schritt.sy + (gy - b.schritt.sy) * e;
+            if (u >= 1) { b.schritt = null; this.ringe.push({x: b.fx, y: b.fy, t: 0}); }
+          } else {
+            const fehler = Math.hypot(gx - b.fx, gy - b.fy);
+            if (fehler > grenze && (laeuft[1 - b.gruppe] === 0 || fehler > grenze * 2.2)) { b.schritt = {sx: b.fx, sy: b.fy, t: 0}; laeuft[b.gruppe]++; }
+          }
+        });
+        for (let i = this.ringe.length - 1; i >= 0; i--) { this.ringe[i].t += dt; if (this.ringe[i].t > 0.5) this.ringe.splice(i, 1); }
+      };
+      Spinne.prototype.male = function (ctx) {
+        const k = this.s, kern = this.kern;
+        ctx.save();
+        ctx.lineWidth = 1; ctx.strokeStyle = kern;
+        this.ringe.forEach((r) => { ctx.globalAlpha = (1 - r.t / 0.5) * 0.45; ctx.beginPath(); ctx.arc(r.x, r.y, 2 + r.t * 16 * k, 0, Math.PI * 2); ctx.stroke(); });
+        ctx.globalAlpha = 1;
+        const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 100 * k);
+        g.addColorStop(0, rgba(kern, 0.14)); g.addColorStop(1, rgba(kern, 0));
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(this.x, this.y, 100 * k, 0, Math.PI * 2); ctx.fill();
+        const L1 = 46 * k, L2 = 54 * k, vx = Math.cos(this.a), vy = Math.sin(this.a);
+        ctx.lineJoin = 'miter'; ctx.lineCap = 'round';
+        this.beine.forEach((b) => {
+          const h = this.welt(b.hx, b.hy), dx = b.fx - h.x, dy = b.fy - h.y, d = Math.hypot(dx, dy) || 0.001, dm = klemme(d, 4, L1 + L2 - 0.5), basis = Math.atan2(dy, dx);
+          const A = Math.acos(klemme((L1 * L1 + dm * dm - L2 * L2) / (2 * L1 * dm), -1, 1));
+          const k1x = h.x + Math.cos(basis + A) * L1, k1y = h.y + Math.sin(basis + A) * L1, k2x = h.x + Math.cos(basis - A) * L1, k2y = h.y + Math.sin(basis - A) * L1;
+          const p1 = (k1x - h.x) * vx + (k1y - h.y) * vy, p2 = (k2x - h.x) * vx + (k2y - h.y) * vy, eins = b.i < 2 ? p1 > p2 : p1 < p2;
+          const kx = eins ? k1x : k2x, ky = eins ? k1y : k2y, fx = h.x + dx / d * dm, fy = h.y + dy / d * dm, greift = this.griff && b === this.griffBein;
+          ctx.strokeStyle = greift ? kern : TINTE; ctx.lineWidth = (greift ? 3 : 2.6) * k;
+          ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.lineTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
+          ctx.fillStyle = kern; ctx.beginPath(); ctx.arc(kx, ky, 2.4 * k, 0, Math.PI * 2); ctx.fill();
+          if (greift) { ctx.beginPath(); ctx.arc(fx, fy, 3.4 * k, 0, Math.PI * 2); ctx.fill(); }
+        });
+        ctx.translate(this.x, this.y); ctx.rotate(this.a + Math.PI / 2); ctx.scale(k, k); ctx.lineJoin = 'round';
+        const form = (pts) => { ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath(); };
+        form([[0, -4], [22, 8], [22, 34], [0, 48], [-22, 34], [-22, 8]]); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.strokeStyle = kern; ctx.lineWidth = 2.4; ctx.stroke();
+        form([[-14, -22], [14, -22], [20, -6], [0, 2], [-20, -6]]); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.strokeStyle = TINTE; ctx.lineWidth = 2.4; ctx.stroke();
+        ctx.fillStyle = kern; ctx.beginPath(); ctx.arc(0, -12, 4, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(0, 21, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      };
+      const schildBreite = (ctx, text, fs) => { ctx.font = '500 ' + fs + 'px ' + MONOF; return ctx.measureText(text).width + fs * 1.1; };
+      const schild = (ctx, text, x, y, bg, fs) => {
+        const w = schildBreite(ctx, text, fs), h = fs * 1.8;
+        ctx.fillStyle = bg; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, 4); else ctx.rect(x, y, w, h); ctx.fill();
+        ctx.fillStyle = PAPIER; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillText(text, x + fs * 0.55, y + h / 2 + 0.5);
+      };
+
+      // ---- Stadt
+      const IDS = Object.keys(DATEIEN), PLATZ = {basis: [1, 1], tpsl: [2, 0], trail: [0, 2], tag: [3, 1], l1: [1, 3], l2: [2, 2], l3: [3, 3], l4: [0, 3], l5: [3, 0], l6: [1, 2]};
+      const feld = $('ansicht-stadt'), bild = $('stadt-bild'), liste = $('stadt-liste'), seite = $('seite');
+      if (!feld || !bild || !liste) return nichts;
+      const SW = 640, SH = 500, TW = 150, TH = 75, OX = 320, OY = 206, ctxS = bild.getContext('2d');
+      let sMass = 1, sDpr = 1;
+      const iso = (gx, gy) => ({x: OX + (gx - gy) * TW / 2, y: OY + (gx + gy) * TH / 2});
+      const haeuser = IDS.map((id, n) => ({id, kurz: 'T' + (n + 1), g: PLATZ[id] || [n % 4, Math.floor(n / 4)], h: 16, bug: null, auf: true, poly: null}));
+      const lose = [];
+      const belegt = {}; haeuser.forEach((h) => { belegt[h.g[0] + ',' + h.g[1]] = 1; lose.push({g: h.g, haus: h}); });
+      for (let gx = 0; gx < 4; gx++) for (let gy = 0; gy < 4; gy++) if (!belegt[gx + ',' + gy]) lose.push({g: [gx, gy], h: 10 + ((gx * 7 + gy * 13) % 4) * 5});
+      lose.sort((p, q) => (p.g[0] + p.g[1]) - (q.g[0] + q.g[1]));
+      const ergebnis = (id) => SS[id] ? SS[id].kennzahlen[0].mit_rebate_pct : null;
+      const offene = (id) => SS[id] ? SS[id].positionen.filter((p) => p.menge) : [];
+      const ecken = (g, h) => { const c = iso(g[0], g[1]), a = TW / 2 * 0.6, b = TH / 2 * 0.6; return {L: [c.x - a, c.y], B: [c.x, c.y + b], R: [c.x + a, c.y], T: [c.x, c.y - b], c}; };
+      const flaeche = (ctx, p, q, h) => { ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.lineTo(q[0], q[1] - h); ctx.lineTo(p[0], p[1] - h); ctx.closePath(); };
+      const band = (ctx, k, v, farbe, lw) => { ctx.strokeStyle = farbe; ctx.lineWidth = lw; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(k.L[0], k.L[1] - v); ctx.lineTo(k.B[0], k.B[1] - v); ctx.lineTo(k.R[0], k.R[1] - v); ctx.stroke(); };
+      function stadtGroesse() {
+        const w = bild.clientWidth || SW; sDpr = Math.min(window.devicePixelRatio || 1, 2.5); sMass = w / SW;
+        bild.width = Math.round(w * sDpr); bild.height = Math.round(w * SH / SW * sDpr);
+      }
+      function stadtSchritt(dt) {
+        let max = 0; IDS.forEach((id) => { const e = ergebnis(id); if (e > max) max = e; });
+        haeuser.forEach((h) => {
+          const e = ergebnis(h.id), soll = e > 0 && max > 0 ? 44 + e / max * 122 : 30;
+          h.h = RUHIG ? soll : h.h + (soll - h.h) * (1 - Math.exp(-dt * 2.4));
+          const hat = offene(h.id).length > 0;
+          if (hat && !h.bug) { const c = iso(h.g[0], h.g[1]); h.bug = new Spinne(c.x + 22, c.y - 10, 0.24); h.bug.tempo = 34; }
+          if (!hat) h.bug = null;
+          if (h.bug && !RUHIG) {
+            const k = ecken(h.g, h.h), mx = (k.B[0] + k.R[0]) / 2, my = (k.B[1] + k.R[1]) / 2, ty = my - (h.auf ? Math.max(12, h.h - 12) : 12);
+            if (Math.abs(h.bug.y - ty) < 3) h.auf = !h.auf;
+            h.bug.schritt(dt, mx, ty);
+          }
+        });
+      }
+      function stadtBild() {
+        const ctx = ctxS;
+        ctx.setTransform(sMass * sDpr, 0, 0, sMass * sDpr, 0, 0); ctx.clearRect(0, 0, SW, SH);
+        ctx.strokeStyle = LINIE; ctx.lineWidth = 1;
+        for (let gx = 0; gx < 4; gx++) for (let gy = 0; gy < 4; gy++) {
+          const c = iso(gx, gy);
+          ctx.beginPath(); ctx.moveTo(c.x, c.y - TH / 2); ctx.lineTo(c.x + TW / 2, c.y); ctx.lineTo(c.x, c.y + TH / 2); ctx.lineTo(c.x - TW / 2, c.y); ctx.closePath(); ctx.stroke();
+        }
+        lose.forEach((los) => {
+          const a = los.haus, h = a ? a.h : los.h, k = ecken(los.g, h);
+          ctx.fillStyle = 'rgba(27,26,23,0.07)'; ctx.beginPath(); ctx.ellipse(k.c.x + 9, k.c.y + 13, TW / 2 * 0.6 + 7, TH / 2 * 0.6 + 5, 0, 0, Math.PI * 2); ctx.fill();
+          flaeche(ctx, k.L, k.B, h); ctx.fillStyle = a ? '#DAD3C3' : '#E3DDD0'; ctx.fill();
+          flaeche(ctx, k.B, k.R, h); ctx.fillStyle = a ? '#EBE5D8' : '#EDE8DC'; ctx.fill();
+          ctx.beginPath(); ctx.moveTo(k.L[0], k.L[1] - h); ctx.lineTo(k.T[0], k.T[1] - h); ctx.lineTo(k.R[0], k.R[1] - h); ctx.lineTo(k.B[0], k.B[1] - h); ctx.closePath();
+          ctx.fillStyle = a ? '#FFFFFF' : '#F7F4EC'; ctx.fill();
+          if (!a) return;
+          const pos = offene(a.id), e = ergebnis(a.id);
+          if (pos.length) { const st = Math.min(11, (h - 14) / pos.length); pos.forEach((p, j) => { const v = 8 + j * st; if (v < h - 4) band(ctx, k, v, p.ergebnis_pct >= 0 ? GUT : ROT, Math.min(2.4, st * 0.45)); }); }
+          else for (let j = 1; j * 16 < h - 4; j++) band(ctx, k, j * 16, '#C9C2B2', 0.9);
+          band(ctx, k, h, e > 0 ? GUT : e < 0 ? ROT : '#7A7F86', 2.2);
+          if (a.bug) a.bug.male(ctx);
+          a.poly = [k.L, k.B, k.R, [k.R[0], k.R[1] - h], [k.T[0], k.T[1] - h], [k.L[0], k.L[1] - h]];
+        });
+        const fs = Math.max(13, 11.5 / sMass);
+        ctx.font = '600 ' + fs + 'px ' + SANSF; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+        haeuser.forEach((a) => {
+          const e = ergebnis(a.id), k = ecken(a.g, a.h), t = a.kurz + (e == null ? '' : '  ' + proz(e, 1)), x = klemme(k.c.x, 60, SW - 60), y = Math.max(fs, k.T[1] - a.h - 8);
+          ctx.strokeStyle = PAPIER; ctx.lineWidth = fs * 0.45; ctx.lineJoin = 'round'; ctx.strokeText(t, x, y); ctx.fillStyle = TINTE; ctx.fillText(t, x, y);
+        });
+        ctx.textAlign = 'left';
+      }
+      const innen = (pt, poly) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) if ((poly[i][1] > pt[1]) !== (poly[j][1] > pt[1]) && pt[0] < (poly[j][0] - poly[i][0]) * (pt[1] - poly[i][1]) / (poly[j][1] - poly[i][1]) + poly[i][0]) c = !c; return c; };
+      const zeigeStadt = (an) => { feld.hidden = !an; if (an) { stadtGroesse(); feld.scrollTop = 0; } else window.scrollTo(0, 0); };
+      const oeffneTest = (id) => { const t = $('tab-' + id); if (t) t.click(); zeigeFokus(id); };
+      bild.addEventListener('click', (ev) => {
+        const r = bild.getBoundingClientRect(), pt = [(ev.clientX - r.left) / r.width * SW, (ev.clientY - r.top) / r.height * SH];
+        for (let i = lose.length - 1; i >= 0; i--) { const a = lose[i].haus; if (a && a.poly && innen(pt, a.poly)) { oeffneTest(a.id); return; } }
+      });
+      const zeilen = {};
+      IDS.forEach((id) => {
+        const b = el('button'); b.type = 'button';
+        zeilen[id] = {t: b.appendChild(el('span', 't', '')), s: b.appendChild(el('span', 's', '')), w: b.appendChild(el('span', 'w', '–'))};
+        b.addEventListener('click', () => oeffneTest(id)); liste.appendChild(b);
+      });
+      function listeFuellen() {
+        IDS.forEach((id) => {
+          const tab = $('tab-' + id), z = zeilen[id], e = ergebnis(id), t = tab ? tab.querySelector('.t') : null, s = tab ? tab.querySelector('.s') : null;
+          const tt = t ? t.textContent : id, st = s ? s.textContent : '', wt = e == null ? '–' : proz(e), wf = e == null ? GRAU : ton(e);
+          if (z.t.textContent !== tt) z.t.textContent = tt;
+          if (z.s.textContent !== st) z.s.textContent = st;
+          if (z.w.textContent !== wt) z.w.textContent = wt;
+          if (z.w.style.color !== wf) z.w.style.color = wf;
+        });
+      }
+      const zurueck = el('button', 'zurstadt', 'Zur Stadt'); zurueck.type = 'button'; zurueck.addEventListener('click', () => zeigeStadt(true));
+      const leiste = document.querySelector('.leiste'); if (leiste) leiste.insertBefore(zurueck, leiste.firstChild);
+      window.addEventListener('resize', () => { if (!feld.hidden) stadtGroesse(); if (R) R.groesse(); });
+      zeigeStadt(true);
+
+      // ---- Positions-Replay: eigener Chart unter dem Chart des Boards, damit dessen Live-Kerzen unberührt bleiben
+      const GRUND = {ziel: 'Ziel erreicht', nachzug: 'Stop nachgezogen', stop: 'Stop', schliessen: 'Umkehrsignal', tageslimit: 'Tageslimit'};
+      let R = null, TEMPO = 1;
+      const ausTrade = (t) => ({coin: t.coin, dir: t.richtung, seit: sek(t.ein), einstieg: t.ein_kurs, exit: {t: sek(t.aus), kurs: t.aus_kurs, grund: t.grund, label: t.label},
+                                tp: null, sl: null, trail: 0});
+      function eintrag(st0, coin, p) {
+        const k = st0.kennzahlen[0], trail = k.trail || 0;
+        if (p && p.menge && p.seit) return {coin, dir: p.richtung, seit: sek(p.seit), einstieg: p.einstieg, exit: null, tp: trail ? null : (p.ziel_kurs || null), sl: trail ? null : (p.stop_kurs || null), trail};
+        if (Array.isArray(st0.trades)) {             // Tests 5 bis 9: abgeschlossene Trades stehen fertig im Stand; hier der jüngste dieses Coins
+          const t = st0.trades.filter((x) => x.coin === coin).sort((a, b) => new Date(a.aus) - new Date(b.aus)).pop();
+          return t ? ausTrade(t) : null;
+        }
+        let ein = null, letzter = null;
+        st0.orders_alle.filter((o) => o.coin === coin).sort((a, b) => new Date(a.zeit) - new Date(b.zeit)).forEach((o) => {
+          if (o.grund === 'einstieg') ein = o; else if (ein) { letzter = {ein, aus: o}; ein = null; }
+        });
+        if (!letzter) return null;
+        const kurz = !letzter.ein.kauf, e = letzter.ein.kurs;
+        return {coin, dir: kurz ? 'Short' : 'Long', seit: sek(letzter.ein.zeit), einstieg: e, exit: {t: sek(letzter.aus.zeit), kurs: letzter.aus.kurs, grund: letzter.aus.grund},
+                tp: k.tp ? e * (kurz ? 1 - k.tp : 1 + k.tp) : null, sl: k.sl ? e * (kurz ? 1 + k.sl : 1 - k.sl) : null, trail};
+      }
+      function baue(coin, ort, daten, p, st0, vorgabe) {
+        if (R) { R.weg(); R = null; }
+        const alt = ort.querySelector('.replay'); if (alt) alt.remove();
+        if (!window.LightweightCharts || !st0 || !Array.isArray(daten) || daten.length < 3) return;
+        const it = vorgabe || eintrag(st0, coin, p); if (!it) return;   // vorgabe: ein bestimmter abgeschlossener Trade aus der Fokus-Liste
+        const alle = daten.map((k) => [k.time, k.open, k.high, k.low, k.close]), kurz = it.dir === 'Short';
+        if (it.exit && it.exit.t < alle[0][0]) {
+          const b0 = ort.appendChild(el('div', 'replay'));
+          b0.appendChild(el('p', 'hinweis', 'Positions-Replay: Der letzte Trade dieses Marktes liegt vor dem Chartfenster. Wähle oben ein größeres Raster (4h oder 1d), dann lässt er sich abspielen.'));
+          return;
+        }
+        let gi = 0, ende = alle.length - 1; const frueh = it.seit < alle[0][0];
+        alle.forEach((b, i) => { if (b[0] <= it.seit) gi = i; if (it.exit && b[0] <= it.exit.t) ende = i; });
+        const start = Math.max(0, gi - 40), bars = alle.slice(start, ende + 1), N = bars.length; gi -= start;
+        if (N < 2) return;
+        it.ende = it.exit ? it.exit.kurs : bars[N - 1][4];
+        it.erg = (kurz ? it.einstieg - it.ende : it.ende - it.einstieg) / it.einstieg * 100;
+        const pr = stellenVon(it.ende);
+        let stops = null;
+        if (it.trail) {
+          stops = []; let cur = it.einstieg * (kurz ? 1 + it.trail : 1 - it.trail);
+          for (let i = 0; i < N; i++) {
+            if (i > gi) { const c = kurz ? bars[i][3] * (1 + it.trail) : bars[i][2] * (1 - it.trail); cur = kurz ? Math.min(cur, c) : Math.max(cur, c); }
+            if (it.exit && it.exit.grund === 'nachzug') cur = kurz ? Math.max(cur, it.exit.kurs) : Math.min(cur, it.exit.kurs);
+            stops.push(cur);
+          }
+          if (it.exit && it.exit.grund === 'nachzug') stops[N - 1] = it.exit.kurs;
+        }
+        let lo = it.einstieg, hi = it.einstieg;
+        bars.forEach((b) => { lo = Math.min(lo, b[3]); hi = Math.max(hi, b[2]); });
+        [it.tp, it.sl].concat(stops || []).forEach((v) => { if (v) { lo = Math.min(lo, v); hi = Math.max(hi, v); } });
+        const rand = (hi - lo) * 0.1; lo -= rand; hi += rand;
+        const schritte = [{preis: it.einstieg, farbe: TINTE, name: 'Einstieg ' + it.dir, strich: true, fund: true, prog: 0, text: 'Einstieg gefunden · ' + it.dir + ' bei ' + zahl(it.einstieg, pr) + ' · ' + zeitText(it.seit) + ' UTC'}];
+        if (it.tp) schritte.push({preis: it.tp, farbe: GUT, name: 'TP', prog: 0, text: 'Ziel (TP) gesetzt bei ' + zahl(it.tp, pr)});
+        if (it.sl) schritte.push({preis: it.sl, farbe: ROT, name: 'SL', prog: 0, text: 'Stop (SL) gesetzt bei ' + zahl(it.sl, pr)});
+        if (stops) schritte.push({preis: stops[gi], farbe: ROT, name: 'SL', zug: true, prog: 0, text: 'Stop (SL) gesetzt bei ' + zahl(stops[gi], pr) + ' · folgt dem Kurs mit ' + zahl(it.trail * 100, 0) + ' %'});
+
+        const block = ort.appendChild(el('div', 'replay')), knoepfe = block.appendChild(el('div', 'replay-knoepfe'));
+        const knopf = knoepfe.appendChild(el('button', 'haupt', 'Positions-Replay starten')); knopf.type = 'button';
+        [0.5, 1, 2].forEach((x) => {
+          const b = knoepfe.appendChild(el('button', null, String(x).replace('.', ',') + '×')); b.type = 'button'; b.setAttribute('aria-pressed', String(x === TEMPO)); b.setAttribute('aria-label', 'Tempo ' + String(x).replace('.', ',') + '-fach');
+          b.addEventListener('click', () => { TEMPO = x; knoepfe.querySelectorAll('button[aria-label]').forEach((n) => n.setAttribute('aria-pressed', String(n === b))); });
+        });
+        const buehne = block.appendChild(el('div', 'replay-buehne')), kz = buehne.appendChild(el('div')), ov = buehne.appendChild(el('canvas')), status = block.appendChild(el('p', 'replay-status', ''));
+        if (frueh) block.appendChild(el('p', 'hinweis', 'Der Einstieg liegt vor dem Chartfenster. Mit einem größeren Raster (4h oder 1d) siehst du auch die Kerzen davor.'));
+        const sage = (t, f) => { if (status.textContent !== t) status.textContent = t; status.style.setProperty('--c', f); };
+        const ch = LightweightCharts.createChart(kz, Object.assign(chartOpt(kz), {handleScroll: false, handleScale: false}));
+        const se = ch.addCandlestickSeries({upColor: GUT, downColor: FLAECHE, borderVisible: true, borderUpColor: GUT, borderDownColor: TINTE, wickUpColor: GUT, wickDownColor: TINTE, priceLineVisible: false,
+          priceFormat: {type: 'price', precision: pr, minMove: Math.pow(10, -pr)}, autoscaleInfoProvider: () => ({priceRange: {minValue: lo, maxValue: hi}})});
+        const lw = bars.map((b) => ({time: b[0], open: b[1], high: b[2], low: b[3], close: b[4]}));
+        let gezeigt = -1;
+        const zeige = (n) => { if (n === gezeigt) return; gezeigt = n; se.setData(lw.slice(0, n)); ch.timeScale().setVisibleLogicalRange({from: -1, to: N + 3}); };
+        const X = (i) => { const v = ch.timeScale().logicalToCoordinate(i); return v == null ? 0 : v; }, Y = (q) => { const v = se.priceToCoordinate(q); return v == null ? 0 : v; };
+        const breite = () => { try { return kz.clientWidth - ch.priceScale('right').width(); } catch (e) { return kz.clientWidth - 62; } };
+        const hoehe = () => { try { return kz.clientHeight - ch.timeScale().height(); } catch (e) { return kz.clientHeight - 26; } };
+        const ctx = ov.getContext('2d'); let dpr = 1;
+        const masse = Math.max(0.5, Math.min(0.8, kz.clientWidth / 640 * 0.8)), n0 = Math.max(1, gi - Math.min(6, gi)), dauer = klemme(26 / Math.max(1, N - gi), 0.08, 0.6);
+        const st = {phase: 'bereit', pt: 0, n: n0, schlange: [], da: false, zugIdx: -1, zugProg: 1, pause: false, tier: null};
+        const heim = () => { st.tier = new Spinne(kz.clientWidth + 90, kz.clientHeight * 0.4, masse); st.tier.tempo = 520 * masse; };
+        const schluss = () => it.exit ? (it.exit.label || GRUND[it.exit.grund] || it.exit.grund) + ' bei ' + zahl(it.exit.kurs, pr) + ' · ' + zeitText(it.exit.t) + ' UTC · ' + proz(it.erg)
+                                      : 'Offen · letzte Kerze ' + zeitText(bars[N - 1][0]) + ' UTC · ' + proz(it.erg) + ' seit Einstieg';
+        const beschrifte = () => { knopf.textContent = st.phase === 'bereit' ? 'Positions-Replay starten' : st.phase === 'ende' ? 'Replay neu starten' : st.pause ? 'Weiter' : 'Pause'; };
+        const fertig = () => { st.phase = 'ende'; st.pt = 0; st.tier.greife(null); sage(schluss(), ton(it.erg)); beschrifte(); };
+        const aufgaben = (i) => i === gi ? schritte.map((s) => ({art: 'linie', s, i})) : (stops && i > gi && stops[i] !== stops[i - 1]) ? [{art: 'zug', i, von: stops[i - 1], nach: stops[i]}] : [];
+        knopf.addEventListener('click', () => {
+          if (st.phase === 'lauf' || st.phase === 'arbeit') { st.pause = !st.pause; beschrifte(); return; }
+          schritte.forEach((s) => { s.prog = 0; });
+          st.schlange = []; st.da = false; st.pt = 0; st.n = n0; st.pause = false; st.zugIdx = -1; st.zugProg = 1; st.phase = 'lauf';
+          zeige(n0); heim(); sage('Kerzen laufen. Der Crawler wartet.', GRAU); beschrifte();
+          knoepfe.scrollIntoView({behavior: RUHIG ? 'auto' : 'smooth', block: 'start'});
+        });
+        heim(); zeige(n0); sage('Bereit. Der Chart zeigt die Kerzen vor dem Einstieg.', GRAU);
+        R = {
+          box: buehne,
+          groesse() { dpr = Math.min(window.devicePixelRatio || 1, 2.5); ov.width = Math.round(kz.clientWidth * dpr); ov.height = Math.round(kz.clientHeight * dpr); ch.applyOptions({width: kz.clientWidth, height: kz.clientHeight}); ch.timeScale().setVisibleLogicalRange({from: -1, to: N + 3}); },
+          weg() { try { ch.remove(); } catch (e) {} block.remove(); },
+          schritt(dt) {
+            if (st.pause) return;
+            st.pt += dt;
+            const sp = st.tier, pw = breite(), ph = hoehe(); let tx = pw + 90, ty = ph * 0.4;
+            if (st.phase === 'lauf') {
+              sp.greife(null);
+              const vor = Math.floor(st.n); st.n = Math.min(N, st.n + dt * TEMPO / dauer);
+              if (Math.floor(st.n) > vor) {
+                const jetzt = vor + 1, idx = jetzt - 1; st.n = jetzt; zeige(jetzt);
+                const q = aufgaben(idx);
+                if (idx >= gi) sage('Kurs ' + zahl(bars[idx][4], pr) + ' · ' + zeitText(bars[idx][0]) + ' UTC', GRAU);
+                if (q.length) { st.schlange = q; st.phase = 'arbeit'; st.da = false; st.pt = 0; if (q[0].art === 'zug') { st.zugIdx = idx; st.zugProg = 0; } }
+                else if (jetzt >= N) fertig();
+              }
+            } else if (st.phase === 'arbeit') {
+              const a = st.schlange[0], gx = X(a.i), preis = a.art === 'zug' ? a.von + (a.nach - a.von) * weich(st.zugProg) : a.s.preis, yl = Y(preis), yc = Y(bars[a.i][4]), seite2 = yc > yl ? -1 : 1;
+              tx = klemme(gx + 18 * masse, 24, pw - 24); ty = klemme(yl + 40 * masse * seite2, 24, ph - 24);
+              if (Math.hypot(sp.x - tx, sp.y - ty) < 10 || st.da) {
+                if (!st.da) { st.da = true; st.pt = 0; sage(a.art === 'zug' ? 'SL nachgezogen auf ' + zahl(a.nach, pr) + ' · ' + zeitText(bars[a.i][0]) + ' UTC' : a.s.text, a.art === 'zug' ? ROT : a.s.farbe); }
+                sp.greife({x: gx, y: yl});
+                let durch = false;
+                if (a.art === 'zug') { st.zugProg = Math.min(1, st.zugProg + dt * 1.4 * TEMPO); durch = st.zugProg >= 1 && st.pt > 1.1 / TEMPO; }
+                else { if (!a.s.fund || st.pt > 1 / TEMPO) a.s.prog = Math.min(1, a.s.prog + dt * 1.1 * TEMPO); durch = a.s.prog >= 1 && st.pt > (a.s.fund ? 2.6 : 1.6) / TEMPO; }
+                if (durch) {
+                  st.schlange.shift(); st.da = false; st.pt = 0; sp.greife(null);
+                  if (!st.schlange.length) { st.zugIdx = -1; st.zugProg = 1; if (Math.floor(st.n) >= N) fertig(); else st.phase = 'lauf'; }
+                }
+              }
+            }
+            sp.schritt(dt, tx, ty);
+          },
+          bild() {
+            const pw = breite(), ph = hoehe(), cnt = Math.max(1, Math.min(Math.floor(st.n), N)), ye = Y(it.einstieg), gx = X(gi);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, ov.width, ov.height);
+            ctx.save(); ctx.beginPath(); ctx.rect(0, 0, pw, ph); ctx.clip();
+            if (schritte[0].prog > 0 && cnt - gi > 1) {
+              const plus = kurz ? bars[cnt - 1][4] <= it.einstieg : bars[cnt - 1][4] >= it.einstieg;
+              ctx.beginPath(); ctx.moveTo(gx, ye); for (let i = gi; i < cnt; i++) ctx.lineTo(X(i), Y(bars[i][4])); ctx.lineTo(X(cnt - 1), ye); ctx.closePath();
+              ctx.fillStyle = rgba(plus ? GUT : ROT, 0.08); ctx.fill();
+            }
+            schritte.forEach((s) => {
+              if (s.prog <= 0) return;
+              const e = weich(s.prog), yl = Y(s.preis);
+              ctx.strokeStyle = s.farbe; ctx.lineWidth = s.strich ? 1.3 : 2; ctx.lineJoin = 'round'; if (s.strich) ctx.setLineDash([5, 5]);
+              ctx.beginPath(); ctx.moveTo(gx, yl);
+              if (s.zug) {
+                if (cnt <= gi + 1) ctx.lineTo(gx + 18 * e, yl);
+                for (let i = gi + 1; i < cnt; i++) { const ziel = i === st.zugIdx ? stops[i - 1] + (stops[i] - stops[i - 1]) * weich(st.zugProg) : stops[i]; ctx.lineTo(X(i), Y(stops[i - 1])); ctx.lineTo(X(i), Y(ziel)); }
+              } else ctx.lineTo(gx + (pw - gx) * e, yl);
+              ctx.stroke(); ctx.setLineDash([]);
+              if (s.prog >= 1) { const w = schildBreite(ctx, s.name, 11); schild(ctx, s.name, klemme(gx - w - 8, 6, pw - w - 6), klemme(yl - 10, 4, ph - 24), s.farbe, 11); }
+            });
+            if (st.phase === 'arbeit' && st.da && st.schlange.length) {
+              const a = st.schlange[0];
+              if (a.art === 'linie' && a.s.fund) {
+                for (let i = 0; i < 3; i++) { const u = ((st.pt * TEMPO * 0.9) + i / 3) % 1; ctx.strokeStyle = rgba(TINTE, (1 - u) * 0.9); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(gx, ye, 6 + u * 36, 0, Math.PI * 2); ctx.stroke(); }
+                ctx.fillStyle = TINTE; ctx.beginPath(); ctx.arc(gx, ye, 4.5, 0, Math.PI * 2); ctx.fill();
+              }
+              if (a.art === 'zug') { const u = (st.pt * TEMPO * 1.1) % 1, py = Y(a.von + (a.nach - a.von) * weich(st.zugProg)); ctx.strokeStyle = rgba(ROT, (1 - u) * 0.9); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X(a.i), py, 5 + u * 24, 0, Math.PI * 2); ctx.stroke(); }
+            }
+            if (st.phase === 'ende') {
+              const yEnd = Y(it.ende), xEnd = X(N - 1); let t;
+              if (it.exit) { ctx.fillStyle = ton(it.erg); ctx.strokeStyle = PAPIER; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(xEnd, yEnd, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); t = (it.exit.label || GRUND[it.exit.grund] || 'Ausstieg') + ' ' + proz(it.erg); }
+              else { ctx.strokeStyle = GRAU; ctx.lineWidth = 1; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(0, yEnd); ctx.lineTo(pw, yEnd); ctx.stroke(); ctx.setLineDash([]); t = proz(it.erg); }
+              const w2 = schildBreite(ctx, t, 11); schild(ctx, t, klemme(xEnd - w2 - 12, 6, pw - w2 - 6), klemme(yEnd + (yEnd > ph / 2 ? -34 : 14), 4, ph - 24), ton(it.erg), 11);
+            }
+            st.tier.male(ctx); ctx.restore();
+          }
+        };
+        R.groesse();
+      }
+
+      // ---- Fokus-Ansicht eines Tests: Ergebnis, Konto-Verlauf, Position wählen, Replay. Das volle Dashboard bleibt über „Alle Details“ erreichbar.
+      const fokus = seite.appendChild(el('div', 'stadt')); fokus.id = 'ansicht-fokus'; fokus.hidden = true;
+      const fInnen = fokus.appendChild(el('div', 'stadt-innen'));
+      let fVerlauf = null, fRaster = '4h', fLauf = 0;
+      function zeigeFokus(id) {
+        const st0 = SS[id];
+        if (fVerlauf) { try { fVerlauf.remove(); } catch (e) {} fVerlauf = null; }
+        if (R) { R.weg(); R = null; }
+        fLauf++;
+        fInnen.replaceChildren();
+        const tab = $('tab-' + id), tt = tab && tab.querySelector('.t') ? tab.querySelector('.t').textContent : id, teile = tt.split(' · ');
+        const nav = fInnen.appendChild(el('div', 'fokus-nav'));
+        const b1 = nav.appendChild(el('button', 'zurstadt', 'Stadt')); b1.type = 'button'; b1.addEventListener('click', () => { fokus.hidden = true; zeigeStadt(true); });
+        nav.appendChild(el('span', null, '›')); nav.appendChild(el('span', 'fokus-hier', teile[0]));
+        const b2 = nav.appendChild(el('button', 'zurstadt fokus-alle', 'Alle Details')); b2.type = 'button'; b2.addEventListener('click', () => { fokus.hidden = true; feld.hidden = true; window.scrollTo(0, 0); });
+        const titel = teile.slice(1).join(' · ') || tt;
+        if (!st0) {
+          fInnen.appendChild(el('h1', 'stadt-titel', titel)); fInnen.appendChild(el('p', 'hinweis', 'Dieser Test hat noch keinen Stand geliefert.'));
+          fokus.hidden = false; feld.hidden = true; fokus.scrollTop = 0; return;
+        }
+        const k = st0.kennzahlen[0], lab = k.labor || null, unter = lab && lab.text ? lab.text : (tab && tab.querySelector('.s') ? tab.querySelector('.s').textContent : '');
+        fInnen.appendChild(el('h1', 'stadt-titel', lab && lab.titel ? lab.titel.replace('Labor: ', '') : titel));
+        if (unter) fInnen.appendChild(el('p', 'hinweis', unter));
+        const kopf = fInnen.appendChild(el('div', 'fokus-kopf')), li = kopf.appendChild(el('div', 'fokus-links')), re = kopf.appendChild(el('div', 'fokus-rechts'));
+        li.appendChild(el('span', 'stadt-oben', 'Netto mit Rebate'));
+        li.appendChild(el('span', 'fokus-gross', proz(k.mit_rebate_pct))).style.color = ton(k.mit_rebate_pct);
+        re.appendChild(el('span', null, (k.mit_rebate_usd > 0 ? '+' : k.mit_rebate_usd < 0 ? '−' : '') + zahl(Math.abs(k.mit_rebate_usd), 2) + ' $'));
+        re.appendChild(el('span', null, 'Einbruch ' + (k.einbruch_pct ? '−' + zahl(k.einbruch_pct, 2) + ' %' : '0,00 %')));
+        re.appendChild(el('span', null, k.orders + ' Orders · ' + k.long + ' Long · ' + k.short + ' Short'));
+        re.appendChild(el('span', null, zahl(k.tage, 1) + ' Tage · Hebel ' + zahl(k.hebel, 0)));
+        fInnen.appendChild(el('h2', null, 'Konto-Verlauf seit Start, in % des Startkapitals'));
+        const vb = fInnen.appendChild(el('div', 'fokus-verlauf'));
+        const eintraege = [];
+        st0.positionen.forEach((p) => {
+          const it = eintrag(st0, p.coin, p); if (!it) return;
+          if (Array.isArray(st0.trades) && it.exit) return;   // abgeschlossene Trades kommen gleich vollständig aus dem Stand
+          const kurzP = it.dir === 'Short', erg = it.exit ? (kurzP ? it.einstieg - it.exit.kurs : it.exit.kurs - it.einstieg) / it.einstieg * 100 : p.ergebnis_pct;
+          eintraege.push({p, text: p.coin + ' · ' + it.dir + ' · ' + proz(erg) + ' · ' + (it.exit ? (GRUND[it.exit.grund] || it.exit.grund) : 'offen'), offen: !it.exit});
+        });
+        if (Array.isArray(st0.trades)) [...st0.trades].sort((a, b) => new Date(b.aus) - new Date(a.aus)).forEach((t) => {
+          const p = st0.positionen.find((x) => x.coin === t.coin) || {coin: t.coin};
+          eintraege.push({p, it: ausTrade(t), offen: false, text: t.coin + ' · ' + (t.teil ? t.teil + ' · ' : '') + t.richtung + ' · ' + proz(t.pct) + ' · ' + (t.label || GRUND[t.grund] || t.grund)
+            + ' · ' + t.aus.slice(8, 10) + '.' + t.aus.slice(5, 7) + '. ' + t.aus.slice(11, 16)});
+        });
+        const platz = el('div', 'fokus-platz');
+        if (!eintraege.length) fInnen.appendChild(el('p', 'hinweis', 'Dieser Test hat noch keine Position eröffnet. Es gibt nichts abzuspielen.'));
+        else {
+          const wahl = fInnen.appendChild(el('div', 'fokus-wahl')), lb = wahl.appendChild(el('label', null, 'Position (' + eintraege.filter((e) => e.offen).length + ' offen, ' + eintraege.filter((e) => !e.offen).length + ' geschlossen)')), sel = wahl.appendChild(el('select'));
+          sel.id = 'fokus-position'; lb.htmlFor = 'fokus-position';
+          const g1 = el('optgroup'), g2 = el('optgroup'); g1.label = 'Offen'; g2.label = 'Geschlossen';
+          eintraege.forEach((e, i) => { const o = el('option', null, e.text); o.value = String(i); (e.offen ? g1 : g2).appendChild(o); });
+          if (g1.children.length) sel.appendChild(g1); if (g2.children.length) sel.appendChild(g2);
+          const rk = wahl.appendChild(el('div', 'replay-knoepfe'));
+          rk.appendChild(el('span', 'stadt-oben', 'Kerzen'));
+          const lade = async () => {
+            const e = eintraege[+sel.value], lauf = ++fLauf;
+            if (R) { R.weg(); R = null; }
+            platz.replaceChildren(el('p', 'hinweis', 'Lade Kerzen …'));
+            try {
+              const a = await (await fetch(`${REST}/fapi/v1/klines?symbol=${e.p.coin}USDT&interval=${fRaster}&limit=500`)).json();
+              if (lauf !== fLauf) return;
+              if (!Array.isArray(a) || !a.length) { platz.replaceChildren(el('p', 'hinweis', KEIN_CHART)); return; }
+              platz.replaceChildren();
+              baue(e.p.coin, platz, a.map((q) => ({time: Math.floor(q[0] / 1000), open: +q[1], high: +q[2], low: +q[3], close: +q[4]})), e.p, st0, e.it);
+              if (!platz.querySelector('.replay')) platz.appendChild(el('p', 'hinweis', 'Für diese Position gibt es nichts abzuspielen.'));
+            } catch (err) { if (lauf === fLauf) platz.replaceChildren(el('p', 'hinweis', 'Kerzen konnten nicht geladen werden. Bitte später erneut versuchen.')); }
+          };
+          ['1h', '4h', '1d'].forEach((r) => {
+            const b = rk.appendChild(el('button', null, r)); b.type = 'button'; b.setAttribute('aria-pressed', String(r === fRaster));
+            b.addEventListener('click', () => { fRaster = r; rk.querySelectorAll('button').forEach((n) => n.setAttribute('aria-pressed', String(n === b))); lade(); });
+          });
+          sel.addEventListener('change', lade);
+          fInnen.appendChild(platz);
+          fokus.hidden = false; feld.hidden = true; fokus.scrollTop = 0;
+          lade();
+        }
+        fokus.hidden = false; feld.hidden = true;
+        if (window.LightweightCharts) {
+          try {
+            fVerlauf = LightweightCharts.createChart(vb, Object.assign(chartOpt(vb), {handleScroll: false, handleScale: false}));
+            const vs = fVerlauf.addBaselineSeries({baseValue: {type: 'price', price: 0}, topLineColor: GUT, bottomLineColor: ROT,
+              topFillColor1: 'rgba(30,107,69,.20)', topFillColor2: 'rgba(30,107,69,.02)', bottomFillColor1: 'rgba(184,67,31,.02)', bottomFillColor2: 'rgba(184,67,31,.20)',
+              priceFormat: {type: 'custom', formatter: (v) => proz(v), minMove: 0.001}});
+            const punkte = new Map(); st0.verlauf.forEach((r) => punkte.set(Math.floor(new Date(r.zeit) / 60000) * 60, r.mit_rebate));
+            vs.setData([...punkte.entries()].sort((a, b) => a[0] - b[0]).map(([time, value]) => ({time, value})));
+            fVerlauf.timeScale().fitContent();
+            const diese = fVerlauf; new ResizeObserver(() => { if (fVerlauf === diese && vb.clientWidth) diese.applyOptions({width: vb.clientWidth, height: vb.clientHeight}); }).observe(vb);
+          } catch (e) { fVerlauf = null; }
+        }
+      }
+
+      // ---- eine gemeinsame Schleife für Stadt und Replay
+      let zuletzt = 0, listeZeit = 0;
+      const bildlauf = (ts) => {
+        const dt = Math.min(0.05, (ts - zuletzt) / 1000 || 0); zuletzt = ts;
+        try {
+          if (!seite.hidden && !feld.hidden) { if (bild.clientWidth && Math.abs(bild.clientWidth * sDpr - bild.width) > 2) stadtGroesse(); stadtSchritt(dt); stadtBild(); if (ts - listeZeit > 1000) { listeZeit = ts; listeFuellen(); } }
+          if (R) { if (!R.box.isConnected || R.box.offsetParent === null) { R.weg(); R = null; } else { R.schritt(dt); R.bild(); } }
+        } catch (e) {}
+        requestAnimationFrame(bildlauf);
+      };
+      requestAnimationFrame(bildlauf);
+      return {kerzen(coin, z, daten, p) { try { baue(coin, z.detail, daten, p, S); } catch (e) { R = null; } }};
+    } catch (e) { try { $('ansicht-stadt').hidden = true; } catch (e2) {} return nichts; }
+  })();
+
+  const merken = { lesen: () => { try { return localStorage.getItem('board-schluessel'); } catch (e) { return null; } },
+                   setzen: (v) => { try { v ? localStorage.setItem('board-schluessel', v) : localStorage.removeItem('board-schluessel'); } catch (e) {} } };
+  $('torform').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    $('torfehler').textContent = ''; $('torknopf').disabled = true; $('torknopf').textContent = 'Prüfe …';
+    try {
+      const info = await (await fetch('schluessel.json', {cache: 'no-store'})).json();
+      const bits = await ableiten($('pw').value, info);
+      await oeffnen(bits);
+      merken.setzen(btoa(String.fromCharCode(...bits)));
+      $('pw').value = '';
+      starten();
+    } catch (e) {
+      $('torfehler').textContent = (e && e.name === 'TypeError') ? 'Schlüsseldatei konnte nicht geladen werden.' : 'Falsches Passwort.';
+    }
+    $('torknopf').disabled = false; $('torknopf').textContent = 'Öffnen';
+  });
+  $('abmelden').addEventListener('click', () => { merken.setzen(null); location.reload(); });
+  (async () => {
+    if (!window.crypto || !crypto.subtle) { $('torfehler').textContent = 'Dieser Browser kann die Seite nicht entschlüsseln (https nötig).'; return; }
+    const g = merken.lesen();
+    if (g) { try { await oeffnen(b64(g)); starten(); return; } catch (e) { merken.setzen(null); } }
+    $('pw').focus();
+  })();
+})();
+</script>
+</body>
+</html>
